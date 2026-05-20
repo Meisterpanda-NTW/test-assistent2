@@ -3,8 +3,8 @@ import streamlit as st
 st.set_page_config(page_title="Garmin Assistent", page_icon="🎙️")
 st.title("🎙️ Garmin Echtzeit-Assistent")
 
-# Die iPad-optimierte Version mit Audio-Freischaltung per Fingertipp
-html_ipad_audio_fix = """
+# iPad-Version: Piepton reagiert wieder direkt auf das gesprochene Wort
+html_ipad_piep_fix = """
 <div style="text-align: center; margin-bottom: 20px;">
     <button id="mic-btn" style="background-color: #ff4b4b; color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 260px; transition: 0.3s; font-family: sans-serif;">
         🎙️ Befehl einsprechen
@@ -29,8 +29,7 @@ if (!Recognition) {
     rec.interimResults = false;
     rec.maxAlternatives = 1;
 
-    // DIE RETTUNG FÜR DAS IPAD:
-    // Wir erstellen ein leeres Sprach-Objekt direkt beim Laden, um Safari zu tricksen
+    // Trickst Safari aus, um die Audio-Ausgabe vorzubereiten
     let siriStimme = new SpeechSynthesisUtterance("");
     window.speechSynthesis.speak(siriStimme);
 
@@ -43,7 +42,6 @@ if (!Recognition) {
     }
 
     function sprich(text) {
-        // Auf Apple-Geräten muss die Audio-Synthese direkt reaktiviert werden
         window.speechSynthesis.cancel(); 
         const speech = new SpeechSynthesisUtterance(text);
         speech.lang = 'de-DE';
@@ -51,12 +49,10 @@ if (!Recognition) {
         window.speechSynthesis.speak(speech);
     }
 
-    // Beim iPad MUSS der Klick die Audio-Berechtigung erzwingen
     btn.addEventListener('click', () => {
-        // Ein leerer Sprachbefehl direkt beim Fingertipp schaltet die iPad-Lautsprecher frei
+        // Schaltet die iPad-Lautsprecher beim Berühren scharf
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
         
-        machPiep(); 
         try { rec.start(); } catch(e) {}
         status.innerText = "🔊 Ich höre zu... Sprich jetzt deinen Befehl!";
         btn.style.backgroundColor = "#2baf2b"; 
@@ -71,7 +67,10 @@ if (!Recognition) {
         let boxFarbe = "#e2e2e2";
         let textFarbe = "#333";
 
+        // Hier wird geprüft, ob du das Aktivierungswort gesagt hast
         if (gehoert.includes("okay garmin") || gehoert.includes("ok garmin") || gehoert.includes("okay gar")) {
+            
+            machPiep(); // DER PIEPTON KOMMT JETZT HIER (NUR WENN OKAY GARMIN GESAGT WURDE!)
             
             if (gehoert.includes("hallo")) {
                 antwortText = "Hallo wie kann ich dir helfen";
@@ -86,8 +85,8 @@ if (!Recognition) {
                 boxFarbe = "#f8d7da";
                 textFarbe = "#721c24";
             } else if (gehoert.includes("schule")) {
-                antwortText = "Hölle gefunden 48°27'22.2 Nord 12°21'35.9 Ost";
-                boxFarbe = "#f8d7da"; // Rot
+                antwortText = "Hölle gefunden";
+                boxFarbe = "#f8d7da";
                 textFarbe = "#721c24";
             } else if (gehoert.includes("beenden")) {
                 antwortText = "programm wird beendet";
@@ -109,8 +108,8 @@ if (!Recognition) {
             antwortBox.style.color = textFarbe;
             antwortBox.style.display = "block";
             
-            // Wir warten 100 Millisekunden, damit Safari Zeit zum Umschalten hat
-            setTimeout(() => { sprich(antwortText); }, 100);
+            // Wartet kurz den Piepton ab, bevor Siri spricht
+            setTimeout(() => { sprich(antwortText); }, 250);
         }
         
         btn.style.backgroundColor = "#ff4b4b";
@@ -127,4 +126,4 @@ if (!Recognition) {
 </script>
 """
 
-st.components.v1.html(html_ipad_audio_fix, height=260)
+st.components.v1.html(html_ipad_piep_fix, height=260)
