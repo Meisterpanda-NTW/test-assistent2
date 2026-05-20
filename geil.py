@@ -85,6 +85,18 @@ if (!Recognition) {
                 antwortText = "nein nicht lukas";
                 boxFarbe = "#f8d7da";
                 textFarbe = "#721c24";
+            } else if (gehoert.includes("fick deine mutter")) {
+                antwortText = "deine auch";
+                boxFarbe = "#fff3cd"; // Gelb/Orange
+                textFarbe = "#856404";
+            } else if (gehoert.includes("f*** deine mutter")) {
+                antwortText = "deine auch";
+                boxFarbe = "#fff3cd"; // Gelb/Orange
+                textFarbe = "#856404";                
+            } else if (gehoert.includes("traubenzucker")) {
+                antwortText = "schnupf mehr";
+                boxFarbe = "#fff3cd"; // Gelb/Orange
+                textFarbe = "#856404";                 
             } else if (gehoert.includes("schule")) {
                 antwortText = "Hölle gefunden standort ist 48°27'22.2 Nord 12°21'35.9 Ost";
                 boxFarbe = "#f8d7da";
