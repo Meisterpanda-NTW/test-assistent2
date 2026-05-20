@@ -3,8 +3,8 @@ import streamlit as st
 st.set_page_config(page_title="Garmin Assistent", page_icon="🎙️")
 st.title("🎙️ Garmin Echtzeit-Assistent")
 
-# Das iPad-sichere System: Hören auf Knopfdruck ohne illegale iFrame-Hintergrundschleifen
-html_ipad_safe_app = """
+# Die iPad-optimierte Version mit Audio-Freischaltung per Fingertipp
+html_ipad_audio_fix = """
 <div style="text-align: center; margin-bottom: 20px;">
     <button id="mic-btn" style="background-color: #ff4b4b; color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 260px; transition: 0.3s; font-family: sans-serif;">
         🎙️ Befehl einsprechen
@@ -19,7 +19,6 @@ const btn = document.getElementById('mic-btn');
 const status = document.getElementById('status');
 const antwortBox = document.getElementById('antwort-box');
 
-// Aktiviert Apples webkit-Erkennung für Safari auf dem iPad
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 if (!Recognition) {
@@ -30,6 +29,11 @@ if (!Recognition) {
     rec.interimResults = false;
     rec.maxAlternatives = 1;
 
+    // DIE RETTUNG FÜR DAS IPAD:
+    // Wir erstellen ein leeres Sprach-Objekt direkt beim Laden, um Safari zu tricksen
+    let siriStimme = new SpeechSynthesisUtterance("");
+    window.speechSynthesis.speak(siriStimme);
+
     function machPiep() {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
@@ -39,14 +43,20 @@ if (!Recognition) {
     }
 
     function sprich(text) {
+        // Auf Apple-Geräten muss die Audio-Synthese direkt reaktiviert werden
+        window.speechSynthesis.cancel(); 
         const speech = new SpeechSynthesisUtterance(text);
         speech.lang = 'de-DE';
+        speech.rate = 1.0;
         window.speechSynthesis.speak(speech);
     }
 
-    // Beim iPad MUSS der Klick die Aufnahme direkt starten
+    // Beim iPad MUSS der Klick die Audio-Berechtigung erzwingen
     btn.addEventListener('click', () => {
-        machPiep(); // Bestätigungs-Piep direkt beim Klicken
+        // Ein leerer Sprachbefehl direkt beim Fingertipp schaltet die iPad-Lautsprecher frei
+        window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+        
+        machPiep(); 
         try { rec.start(); } catch(e) {}
         status.innerText = "🔊 Ich höre zu... Sprich jetzt deinen Befehl!";
         btn.style.backgroundColor = "#2baf2b"; 
@@ -61,7 +71,6 @@ if (!Recognition) {
         let boxFarbe = "#e2e2e2";
         let textFarbe = "#333";
 
-        // Prüft, ob das Aktivierungswort im Satz steckt
         if (gehoert.includes("okay garmin") || gehoert.includes("ok garmin") || gehoert.includes("okay gar")) {
             
             if (gehoert.includes("hallo")) {
@@ -77,8 +86,8 @@ if (!Recognition) {
                 boxFarbe = "#f8d7da";
                 textFarbe = "#721c24";
             } else if (gehoert.includes("schule")) {
-                antwortText = "Hölle gefunden 48°27'22.2 Nord 12°21'35.9 Ost";
-                boxFarbe = "#f8d7da"; // Rot
+                antwortText = "Hölle gefunden";
+                boxFarbe = "#f8d7da";
                 textFarbe = "#721c24";
             } else if (gehoert.includes("beenden")) {
                 antwortText = "programm wird beendet";
@@ -94,19 +103,19 @@ if (!Recognition) {
             status.innerText = "Ignoriert (Kein 'Okay Garmin' im Satz): '" + gehoert + "'";
         }
 
-        // Antwort auf dem iPad-Bildschirm einblenden und vorlesen
         if (antwortText) {
             antwortBox.innerText = antwortText;
             antwortBox.style.backgroundColor = boxFarbe;
             antwortBox.style.color = textFarbe;
             antwortBox.style.display = "block";
-            sprich(antwortText);
+            
+            // Wir warten 100 Millisekunden, damit Safari Zeit zum Umschalten hat
+            setTimeout(() => { sprich(antwortText); }, 100);
         }
         
         btn.style.backgroundColor = "#ff4b4b";
     };
     
-    // Apple-Sicherheits-Reset: Schaltet den Button bei Fehlern oder Ende sauber zurück
     rec.onerror = () => {
         status.innerText = "Bereit. Klicke zum Sprechen.";
         btn.style.backgroundColor = "#ff4b4b";
@@ -118,4 +127,4 @@ if (!Recognition) {
 </script>
 """
 
-st.components.v1.html(html_ipad_safe_app, height=260)
+st.components.v1.html(html_ipad_audio_fix, height=260)
