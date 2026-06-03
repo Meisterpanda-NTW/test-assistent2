@@ -2,7 +2,7 @@ import streamlit as st
 import base64
 import os
 
-st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
+st.set_page_config(page_title="Garmin Assistent", page_icon="🤖")
 st.title("🤖 Garmin KOSTENLOSER KI-Assistent")
 
 # Funktion: Wir wandeln die Musikdateien in unblockierbare Daten-Streams um
@@ -204,13 +204,11 @@ if (!Recognition) {
             } else if (befehlRein.length > 0) {
                 status.innerText = "🤖 Garmin überlegt...";
                 try {
-                    // STABILE, UNBLOCKIERBARE TEXT-Schnittstelle
                     const response = await fetch("https://pollinations.ai" + encodeURIComponent("Du bist Garmin, ein cooler, lustiger Sprachassistent. Antworte auf Deutsch und fasse dich extrem kurz in maximal 1 kurzen Satz! Frage: " + befehlRein));
                     antwortText = await response.text();
                     boxFarbe = "#d1ecf1"; 
                     textFarbe = "#0c5460";
                 } catch (err) {
-                    // Falls Pollinations komplett offline ist, weichen wir auf eine smarte, feste Antwort aus, damit es nie wieder abstürzt!
                     antwortText = "Das ist eine interessante Frage! Leider kann ich mein Gehirn gerade nicht erreichen.";
                     boxFarbe = "#fff3cd";
                 }
@@ -227,6 +225,13 @@ if (!Recognition) {
         }
         btn.style.backgroundColor = "#ff4b4b";
     };
-    rec.onerror = () => { btn.style.backgroundColor = "#ff4b4b"; status.innerText = "Bereit fürs iPad. Klicke zum Sprechen."; };rec.onend = () => { btn.style.backgroundColor = "#ff4b4b"; };}
-    html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
-    st.components.v1.html(html_bereit, height=270)
+    
+    rec.onerror = () => { btn.style.backgroundColor = "#ff4b4b"; status.innerText = "Bereit fürs iPad. Klicke zum Sprechen."; };
+    rec.onend = () => { btn.style.backgroundColor = "#ff4b4b"; };
+}
+</script>
+"""
+
+# Platzhalter austauschen
+html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
+st.components.v1.html(html_bereit, height=270)
