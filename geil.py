@@ -1,10 +1,60 @@
 import streamlit as st
+import base64
+import os
+import urllib.request
+import json
 
-st.set_page_config(page_title="Garmin Assistent", page_icon="🎙️")
-st.title("🎙️ Garmin Echtzeit-Assistent")
+st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
+st.title("🤖 Garmin KOSTENLOSER KI-Assistent")
 
-# Die iPad-optimierte Version mit Audio-Freischaltung per Fingertipp
-html_ipad_audio_fix = """
+# Funktion: Wir wandeln die Musikdateien in unblockierbare Daten-Streams um
+def get_audio_base64(dateiname):
+    if os.path.exists(dateiname):
+        with open(dateiname, "rb") as f:
+            data = f.read()
+            return base64.b64encode(data).decode()
+    return ""
+
+duel_base64 = get_audio_base64("duel.mp3")
+cantina_base64 = get_audio_base64("cantina.mp3")
+hello_base64 = get_audio_base64("hello.mp3")
+
+# VERSTECKTE SCHNITTSTELLE FÜR DIE KI
+if "ki_antwort" not in st.session_state:
+    st.session_state.ki_antwort = ""
+if "gehoert_text" not in st.session_state:
+    st.session_state.gehoert_text = ""
+
+# Ein unsichtbares Textfeld, das die Sprachdaten an Python übergibt
+sprach_input = st.text_input("Schnittstelle", key="ghost_input", label_visibility="collapsed")
+
+if sprach_input and sprach_input != st.session_state.gehoert_text:
+    st.session_state.gehoert_text = sprach_input
+    befehl = sprach_input.lower().strip()
+    
+    # Prüfen, ob es einer deiner festen Spezial-Befehle oder Lieder ist:
+    ist_spezial = False
+    for wort in ["hallo", "fick dich", "lukas", "kilyan", "fick deine mutter", "video speichern", "f*** deine mutter", "traubenzucker", "sieg heil", "schule", "star wars", "spiel musik", "imperium", "duel of fates", "schicksal", "kampf", "cantina", "song", "bar", "hello"]:
+        if wort in befehl:
+            ist_spezial = True
+            break
+            
+    # Wenn es KEIN fester Befehl ist, fragen wir eine Online-KI ohne Key!
+    if not ist_spezial and len(befehl) > 0:
+        try:
+            url = "https://pollinations.ai"
+            prompt = f"Du bist Garmin, ein cooler, lustiger Sprachassistent. Antworte auf Deutsch und fasse dich extrem kurz in maximal 1 kurzen Satz! Frage: {sprach_input}"
+            
+            req = urllib.request.Request(
+                url + urllib.parse.quote(prompt), 
+                headers={'User-Agent': 'Mozilla/5.0'}
+            )
+            with urllib.request.urlopen(req) as response:
+                st.session_state.ki_antwort = response.read().decode('utf-8')
+        except Exception as e:
+            st.session_state.ki_antwort = "Ich konnte die Gratis-KI gerade nicht erreichen."
+# Das HTML-System für den Browser
+html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
     <button id="mic-btn" style="background-color: #ff4b4b; color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 260px; transition: 0.3s; font-family: sans-serif;">
         🎙️ Befehl einsprechen
@@ -18,45 +68,90 @@ html_ipad_audio_fix = """
 const btn = document.getElementById('mic-btn');
 const status = document.getElementById('status');
 const antwortBox = document.getElementById('antwort-box');
-
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 if (!Recognition) {
-    status.innerText = "Sprachsteuerung blockiert. Bitte Safari auf dem iPad nutzen!";
+    status.innerText = "Sprachsteuerung blockiert.";
 } else {
     const rec = new Recognition();
     rec.lang = 'de-DE';
-    rec.interimResults = false;
-    rec.maxAlternatives = 1;
 
-    // DIE RETTUNG FÜR DAS IPAD:
-    // Wir erstellen ein leeres Sprach-Objekt direkt beim Laden, um Safari zu tricksen
     let siriStimme = new SpeechSynthesisUtterance("");
     window.speechSynthesis.speak(siriStimme);
+
+    const audioPlayer = new Audio();
 
     function machPiep() {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
         osc.connect(ctx.destination);
         osc.start();
-        setTimeout(() => osc.stop(), 200);
+        setTimeout(() => { osc.stop(); }, 200);
+    }
+
+    function spieleStarWars() {
+        audioPlayer.pause(); 
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const melodie = [
+            {f: 440.00, d: 0.5}, {f: 440.00, d: 0.5}, {f: 440.00, d: 0.5},
+            {f: 349.23, d: 0.35}, {f: 523.25, d: 0.15}, {f: 440.00, d: 0.5},
+            {f: 349.23, d: 0.35}, {f: 523.25, d: 0.15}, {f: 440.00, d: 0.6}
+        ];
+        let startZeit = ctx.currentTime;
+        melodie.forEach((note) => {
+            const osc = ctx.createOscillator();
+            const gainNode = ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.value = note.f;
+            gainNode.gain.setValueAtTime(0.3, startZeit);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, startZeit + note.d);
+            osc.connect(gainNode);
+            gainNode.connect(ctx.destination);
+            osc.start(startZeit);
+            osc.stop(startZeit + note.d);
+            startZeit += note.d + 0.05;
+        });
+    }
+
+    function spieleEchtesDuelOfFates() {
+        window.speechSynthesis.cancel();
+        const base64Data = "PLATZHALTER_DUEL_MUSIC";
+        if (base64Data.length > 0) {
+            audioPlayer.src = "data:audio/mp3;base64," + base64Data;
+            audioPlayer.volume = 0.5;
+            audioPlayer.play().catch(e => {});
+        }
+    }
+
+    function spieleCantinaSong() {
+        window.speechSynthesis.cancel();
+        const base64Data = "PLATZHALTER_CANTINA_MUSIC";
+        if (base64Data.length > 0) {
+            audioPlayer.src = "data:audio/mp3;base64," + base64Data;
+            audioPlayer.volume = 0.5;
+            audioPlayer.play().catch(e => {});
+        }
+    }
+
+    function spieleHello() {
+        window.speechSynthesis.cancel();
+        const base64Data = "PLATZHALTER_Hello_MUSIC";
+        if (base64Data.length > 0) {
+            audioPlayer.src = "data:audio/mp3;base64," + base64Data;
+            audioPlayer.volume = 0.5;
+            audioPlayer.play().catch(e => {});
+        }
     }
 
     function sprich(text) {
-        // Auf Apple-Geräten muss die Audio-Synthese direkt reaktiviert werden
         window.speechSynthesis.cancel(); 
         const speech = new SpeechSynthesisUtterance(text);
         speech.lang = 'de-DE';
-        speech.rate = 1.0;
         window.speechSynthesis.speak(speech);
     }
 
-    // Beim iPad MUSS der Klick die Audio-Berechtigung erzwingen
     btn.addEventListener('click', () => {
-        // Ein leerer Sprachbefehl direkt beim Fingertipp schaltet die iPad-Lautsprecher frei
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
-        
-        machPiep(); 
         try { rec.start(); } catch(e) {}
         status.innerText = "🔊 Ich höre zu... Sprich jetzt deinen Befehl!";
         btn.style.backgroundColor = "#2baf2b"; 
@@ -64,7 +159,7 @@ if (!Recognition) {
     });
     
     rec.onresult = (e) => {
-        const gehoert = e.results[0][0].transcript.toLowerCase().trim();
+        const gehoert = e.results.transcript.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
         
         let antwortText = "";
@@ -72,47 +167,72 @@ if (!Recognition) {
         let textFarbe = "#333";
 
         if (gehoert.includes("okay garmin") || gehoert.includes("ok garmin") || gehoert.includes("okay gar")) {
+            machPiep(); 
+            
+            const befehlRein = gehoert.replace(/okay garmin|ok garmin|okay gar/g, "").trim();
             
             if (gehoert.includes("hallo")) {
                 antwortText = "Hallo wie kann ich dir helfen";
                 boxFarbe = "#d4edda";
-                textFarbe = "#155724";
             } else if (gehoert.includes("fick dich")) {
                 antwortText = "dich auch";
                 boxFarbe = "#fff3cd";
-                textFarbe = "#856404";
             } else if (gehoert.includes("lukas")) {
                 antwortText = "nein nicht lukas";
                 boxFarbe = "#f8d7da";
-                textFarbe = "#721c24";
+            } else if (gehoert.includes("kilyan")) {
+                antwortText = "dummer sack";
+                boxFarbe = "#fff3cd";
             } else if (gehoert.includes("fick deine mutter")) {
                 antwortText = "deine auch";
-                boxFarbe = "#fff3cd"; // Gelb/Orange
-                textFarbe = "#856404";
+                boxFarbe = "#fff3cd";
+            } else if (gehoert.includes("video speichern")) {
+                antwortText = "sieg heil";
+                boxFarbe = "#fff3cd";
             } else if (gehoert.includes("f*** deine mutter")) {
                 antwortText = "deine auch";
-                boxFarbe = "#fff3cd"; // Gelb/Orange
-                textFarbe = "#856404";                
+                boxFarbe = "#fff3cd";
             } else if (gehoert.includes("traubenzucker")) {
                 antwortText = "schnupf mehr";
-                boxFarbe = "#fff3cd"; // Gelb/Orange
-                textFarbe = "#856404";                 
-            } else if (gehoert.includes("schule")) {
-                antwortText = "Hölle gefunden standort ist 48°27'22.2 Nord 12°21'35.9 Ost";
+                boxFarbe = "#fff3cd";
+            } else if (gehoert.includes("sieg heil")) {
+                antwortText = "heil hitler";
+                boxFarbe = "#fff3cd";
+            } else if (gehoert.includes("schule")) { 
+                antwortText = "Hölle gefunden 48°27'22.2 Nord 12°21'35.9 Ost";
                 boxFarbe = "#f8d7da";
-                textFarbe = "#721c24";
-            } else if (gehoert.includes("beenden")) {
-                antwortText = "programm wird beendet";
+            } else if (gehoert.includes("star wars") || gehoert.includes("spiel musik") || gehoert.includes("imperium")) { 
+                antwortText = "Möge die Macht mit dir sein.";
                 boxFarbe = "#d1ecf1";
-                textFarbe = "#0c5460";
-                status.innerText = "🛑 Assistent beendet.";
-            } else {
-                antwortText = "Aktiviert, aber Befehl nicht verstanden.";
-                boxFarbe = "#e2e2e2";
+                spieleStarWars();
+            } else if (gehoert.includes("duel of fates") || gehoert.includes("schicksal") || gehoert.includes("kampf")) { 
+                antwortText = "Spiele dein hochgeladenes Duel of the Fates Thema.";
+                boxFarbe = "#f8d7da";
+                spieleEchtesDuelOfFates(); 
+            } else if (gehoert.includes("cantina") || gehoert.includes("song") || gehoert.includes("bar")) { 
+                antwortText = "Spiele den Cantina Band Song.";
+                boxFarbe = "#fff3cd";
+                spieleCantinaSong(); 
+            } else if (gehoert.includes("hello")) { 
+                antwortText = "Spiele Hello Song.";
+                boxFarbe = "#fff3cd";
+                spieleHello(); 
+            } else if (gehoert.includes("beenden") || gehoert.includes("stopp")) {
+                antwortText = "Musik gestoppt.";
+                boxFarbe = "#d1ecf1";
+                audioPlayer.pause(); 
+                rec.stop();
+            } else if (befehlRein.length > 0) {
+                // INDEX-FIX HIER EINGEBAUT (inputs[0])
+                status.innerText = "🤖 Garmin überlegt...";
+                const inputs = window.parent.document.getElementsByTagName('input');
+                if (inputs.length > 0) {
+                    inputs[0].value = befehlRein;
+                    inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
+                    inputs[0].dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                return;
             }
-            
-        } else {
-            status.innerText = "Ignoriert (Kein 'Okay Garmin' im Satz): '" + gehoert + "'";
         }
 
         if (antwortText) {
@@ -120,23 +240,39 @@ if (!Recognition) {
             antwortBox.style.backgroundColor = boxFarbe;
             antwortBox.style.color = textFarbe;
             antwortBox.style.display = "block";
-            
-            // Wir warten 100 Millisekunden, damit Safari Zeit zum Umschalten hat
-            setTimeout(() => { sprich(antwortText); }, 100);
+            if (!gehoert.includes("duel of fates") && !gehoert.includes("cantina") && !gehoert.includes("hello")) {
+                setTimeout(() => { sprich(antwortText); }, 250);
+            }
         }
-        
         btn.style.backgroundColor = "#ff4b4b";
     };
     
-    rec.onerror = () => {
-        status.innerText = "Bereit. Klicke zum Sprechen.";
-        btn.style.backgroundColor = "#ff4b4b";
-    };
-    rec.onend = () => {
-        btn.style.backgroundColor = "#ff4b4b";
-    };
+    rec.onerror = () => { btn.style.backgroundColor = "#ff4b4b"; };
+    rec.onend = () => { btn.style.backgroundColor = "#ff4b4b"; };
 }
 </script>
 """
 
-st.components.v1.html(html_ipad_audio_fix, height=260)
+# Platzhalter austauschen
+html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
+
+# Wenn eine KI-Antwort von Python generiert wurde, spielen wir sie über verstecktes JS im Browser ab
+if st.session_state.ki_antwort:
+    st.success(st.session_state.ki_antwort)
+    js_ki_speech = f"""
+    <script>
+    window.parent.document.getElementById('antwort-box').innerText = "{st.session_state.ki_antwort}";
+    window.parent.document.getElementById('antwort-box').style.backgroundColor = "#d1ecf1";
+    window.parent.document.getElementById('antwort-box').style.color = "#0c5460";
+    window.parent.document.getElementById('antwort-box').style.display = "block";
+    
+    const speech = new SpeechSynthesisUtterance("{st.session_state.ki_antwort}");
+    speech.lang = 'de-DE';
+    window.speechSynthesis.speak(speech);
+    </script>
+    """
+    st.components.v1.html(js_ki_speech, height=0, width=0)
+    st.session_state.ki_antwort = ""
+
+# Haupt-App anzeigen
+st.components.v1.html(html_bereit, height=270)
