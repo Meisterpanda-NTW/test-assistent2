@@ -5,7 +5,7 @@ import urllib.request
 import json
 
 st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
-st.title("🤖 Garmin KOSTENLOSER KI-Assistent")
+st.title(" Garmin KOSTENLOSER KI-Assistent")
 
 # Funktion: Wir wandeln die Musikdateien in unblockierbare Daten-Streams um
 def get_audio_base64(dateiname):
