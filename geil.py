@@ -1,8 +1,6 @@
 import streamlit as st
 import base64
 import os
-import urllib.request
-import json
 
 st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
 st.title("🤖 Garmin KOSTENLOSER KI-Assistent")
@@ -19,42 +17,7 @@ duel_base64 = get_audio_base64("duel.mp3")
 cantina_base64 = get_audio_base64("cantina.mp3")
 hello_base64 = get_audio_base64("hello.mp3")
 
-# DIE RETTUNG: Wir holen uns den gesprochenen Befehl absolut sicher direkt aus der Web-Adresse!
-query_params = st.query_params
-sprach_input = query_params.get("speech", "")
-
-# Falls eine Antwort generiert wurde, merken wir sie uns im Session State
-if "ki_antwort" not in st.session_state:
-    st.session_state.ki_antwort = ""
-
-if sprach_input:
-    befehl = sprach_input.lower().strip()
-    
-    # Prüfen, ob es einer deiner festen Spezial-Befehle oder Lieder ist:
-    ist_spezial = False
-    for wort in ["hallo", "fick dich", "lukas", "kilyan", "fick deine mutter", "video speichern", "f*** deine mutter", "traubenzucker", "sieg heil", "schule", "star wars", "spiel musik", "imperium", "duel of fates", "schicksal", "kampf", "cantina", "song", "bar", "hello"]:
-        if wort in befehl:
-            ist_spezial = True
-            break
-            
-    # Wenn es KEIN fester Befehl ist, fragen wir die Gratis-KI!
-    if not ist_spezial and len(befehl) > 0 and "ki_antwort_bereit" not in st.session_state:
-        try:
-            url = "https://pollinations.ai"
-            prompt = f"Du bist Garmin, ein cooler, lustiger Sprachassistent. Antworte auf Deutsch und fasse dich extrem kurz in maximal 1 kurzen Satz! Frage: {sprach_input}"
-            
-            req = urllib.request.Request(
-                url + urllib.parse.quote(prompt), 
-                headers={'User-Agent': 'Mozilla/5.0'}
-            )
-            with urllib.request.urlopen(req) as response:
-                st.session_state.ki_antwort = response.read().decode('utf-8')
-                st.session_state.ki_antwort_bereit = True
-        except Exception as e:
-            st.session_state.ki_antwort = "Ich konnte die Gratis-KI gerade nicht erreichen."
-            st.session_state.ki_antwort_bereit = True
-
-# Das HTML-System für den Browser (Als normaler Text ohne fehleranfälligen f-String!)
+# Das HTML-System für den Browser (Als reiner Text ohne f-String-Fehler!)
 html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
     <button id="mic-btn" style="background-color: #ff4b4b; color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 260px; transition: 0.3s; font-family: sans-serif;">
@@ -72,10 +35,12 @@ const antwortBox = document.getElementById('antwort-box');
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 if (!Recognition) {
-    status.innerText = "Sprachsteuerung blockiert.";
+    status.innerText = "Sprachsteuerung blockiert. Bitte Safari (iPad) oder Chrome (PC) nutzen!";
 } else {
     const rec = new Recognition();
     rec.lang = 'de-DE';
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
 
     let siriStimme = new SpeechSynthesisUtterance("");
     window.speechSynthesis.speak(siriStimme);
@@ -151,6 +116,13 @@ if (!Recognition) {
         window.speechSynthesis.speak(speech);
     }
 
+    function zeigeAntwort(text, bgFarbe, textFarbe) {
+        antwortBox.innerText = text;
+        antwortBox.style.backgroundColor = bgFarbe;
+        antwortBox.style.color = textFarbe;
+        antwortBox.style.display = "block";
+    }
+
     btn.addEventListener('click', () => {
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
         try { rec.start(); } catch(e) {}
@@ -159,19 +131,22 @@ if (!Recognition) {
         antwortBox.style.display = "none";
     });
     
-    rec.onresult = (e) => {
-        const gehoert = e.results.transcript;
+    rec.onresult = async (e) => {
+        const gehoert = e.results[0][0].transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
         
         let antwortText = "";
         let boxFarbe = "#e2e2e2";
         let textFarbe = "#333";
+        let istMusik = false;
 
         if (gehoertLower.includes("okay garmin") || gehoertLower.includes("ok garmin") || gehoertLower.includes("okay gar")) {
             machPiep(); 
             
-            // Lokale Befehle direkt prüfen
+            const befehlRein = gehoertLower.replace(/okay garmin|ok garmin|okay gar/g, "").trim();
+            
+            // Deine komplette originale Befehlsliste
             if (gehoertLower.includes("hallo")) {
                 antwortText = "Hallo wie kann ich dir helfen";
                 boxFarbe = "#d4edda";
@@ -209,85 +184,52 @@ if (!Recognition) {
             } else if (gehoertLower.includes("duel of fates") || gehoertLower.includes("schicksal") || gehoertLower.includes("kampf")) { 
                 antwortText = "Spiele dein hochgeladenes Duel of the Fates Thema.";
                 boxFarbe = "#f8d7da";
+                istMusik = true;
                 spieleEchtesDuelOfFates(); 
             } else if (gehoertLower.includes("cantina") || gehoertLower.includes("song") || gehoertLower.includes("bar")) { 
                 antwortText = "Spiele den Cantina Band Song.";
                 boxFarbe = "#fff3cd";
+                istMusik = true;
                 spieleCantinaSong(); 
             } else if (gehoertLower.includes("hello")) { 
                 antwortText = "Spiele Hello Song.";
                 boxFarbe = "#fff3cd";
+                istMusik = true;
                 spieleHello(); 
             } else if (gehoertLower.includes("beenden") || gehoertLower.includes("stopp")) {
                 antwortText = "Musik gestoppt.";
                 boxFarbe = "#d1ecf1";
                 audioPlayer.pause(); 
                 rec.stop();
-            } else {
-                // REINER KI-WEG: Keine Übereinstimmung gefunden -> Text über die URL an Python übergeben!
-                const befehlRein = gehoertLower.replace(/okay garmin|ok garmin|okay gar/g, "").trim();
-                if (befehlRein.length > 0) {
-                    status.innerText = "🤖 Übermittle an KI...";
-                    const url = new URL(window.parent.location.href);
-                    url.searchParams.set("speech", befehlRein);
-                    window.parent.location.href = url.toString();
-                    return;
+            } else if (befehlRein.length > 0) {
+                // JETZT DIREKT IM BROWSER: Keine Übereinstimmung? Dann direkt an die Gratis-KI funken!
+                status.innerText = "🤖 Garmin überlegt...";
+                try {
+                    const systemPrompt = "Du bist Garmin, ein cooler, lustiger Sprachassistent. Antworte auf Deutsch und fasse dich extrem kurz in maximal 1 kurzen Satz! Frage: ";
+                    const response = await fetch("https://pollinations.ai" + encodeURIComponent(systemPrompt + befehlRein));
+                    antwortText = await response.text();
+                    boxFarbe = "#d1ecf1"; // Schickes KI-Blau
+                    textFarbe = "#0c5460";
+                } catch (err) {
+                    antwortText = "Ich konnte die KI-Schnittstelle gerade nicht erreichen.";
+                    boxFarbe = "#f8d7da";
                 }
             }
-        }
 
-        if (antwortText) {
-            antwortBox.innerText = antwortText;
-            antwortBox.style.backgroundColor = boxFarbe;
-            antwortBox.style.color = textFarbe;
-            antwortBox.style.display = "block";
-            if (!gehoertLower.includes("duel of fates") && !gehoertLower.includes("cantina") && !gehoertLower.includes("hello")) {
-                setTimeout(() => { sprich(antwortText); }, 250);
+            if (antwortText) {
+                zeigeAntwort(antwortText, boxFarbe, textFarbe);
+                if (!istMusik) {
+                    setTimeout(() => { sprich(antwortText); }, 250);
+                }
             }
+        } else {
+            status.innerText = "Ignoriert (Kein 'Okay Garmin'): '" + gehoert + "'";
         }
         btn.style.backgroundColor = "#ff4b4b";
     };
-    
-    rec.onerror = () => { btn.style.backgroundColor = "#ff4b4b"; };
-    rec.onend = () => { btn.style.backgroundColor = "#ff4b4b"; };
-}
-</script>
-"""
 
-# Platzhalter austauschen
-html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
-
-# Wenn eine lokale Antwort da ist oder ein Lied läuft, zeigen wir den Status an
-if sprach_input and not st.session_state.ki_antwort:
-    st.info(f"Letzter verarbeiteter Befehl: '{sprach_input}'")
-
-# Wenn eine KI-Antwort von Python generiert wurde, spielen wir sie ab
-if st.session_state.ki_antwort:
-    st.success(st.session_state.ki_antwort)
-    
-    js_ki_speech_template = """
-    <script>
-    const url = new URL(window.parent.location.href);
-    url.searchParams.delete("speech");
-    window.parent.history.replaceState({}, document.title, url.toString());
-
-    window.parent.document.getElementById('antwort-box').innerText = "TAUSCH_TEXT";
-    window.parent.document.getElementById('antwort-box').style.backgroundColor = "#d1ecf1";
-    window.parent.document.getElementById('antwort-box').style.color = "#0c5460";
-    window.parent.document.getElementById('antwort-box').style.display = "block";
-    
-    const speech = new SpeechSynthesisUtterance("TAUSCH_TEXT");
-    speech.lang = 'de-DE';
-    window.speechSynthesis.speak(speech);
-    </script>
-    """
-    js_ki_speech_bereit = js_ki_speech_template.replace("TAUSCH_TEXT", st.session_state.ki_antwort)
-    st.components.v1.html(js_ki_speech_bereit, height=0, width=0)
-    
-    # State aufräumen
-    st.session_state.ki_antwort = ""
-    if "ki_antwort_bereit" in st.session_state:
-        del st.session_state.ki_antwort_bereit
-
-# Haupt-App im iFrame anzeigen
-st.components.v1.html(html_bereit, height=270)
+    rec.onerror = () => { btn.style.backgroundColor = "#ff4b4b"; status.innerText = "Bereit fürs iPad. Klicke zum Sprechen.";
+    };rec.onend = () => { btn.style.backgroundColor = "#ff4b4b"; };
+    }
+    html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
+    st.components.v1.html(html_bereit, height=270)
