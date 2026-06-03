@@ -235,5 +235,5 @@ if (!Recognition) {
 
 # Platzhalter austauschen
 html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
-# Haupt-App im iFrame anzeige
-nst.components.v1.html(html_bereit, height=270)
+# Haupt-App im iFrame anzeigen
+st.components.v1.html(html_bereit, height=270)
