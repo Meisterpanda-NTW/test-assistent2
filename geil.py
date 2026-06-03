@@ -5,7 +5,7 @@ import urllib.request
 import json
 
 st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
-st.title(" Garmin KOSTENLOSER KI-Assistent")
+st.title("🤖 Garmin KOSTENLOSER KI-Assistent")
 
 # Funktion: Wir wandeln die Musikdateien in unblockierbare Daten-Streams um
 def get_audio_base64(dateiname):
@@ -39,20 +39,20 @@ if sprach_input and sprach_input != st.session_state.gehoert_text:
             ist_spezial = True
             break
             
-    # Wenn es KEIN fester Befehl ist, fragen wir eine Online-KI ohne Key!
+    # Wenn es KEIN fester Befehl ist, fragen wir die stabilere Gratis-KI!
     if not ist_spezial and len(befehl) > 0:
         try:
+            # Wir nutzen das zuverlässigere, freie Modell über text.pollinations mit einem erzwungenen system-prompt
             url = "https://pollinations.ai"
-            prompt = f"Du bist Garmin, ein cooler, lustiger Sprachassistent. Antworte auf Deutsch und fasse dich extrem kurz in maximal 1 kurzen Satz! Frage: {sprach_input}"
+            system_setting = "Du bist Garmin, ein cooler, lustiger Sprachassistent. Antworte auf Deutsch und fasse dich extrem kurz in maximal 1 kurzen Satz! Frage: "
+            full_url = url + urllib.parse.quote(system_setting + sprach_input)
             
-            req = urllib.request.Request(
-                url + urllib.parse.quote(prompt), 
-                headers={'User-Agent': 'Mozilla/5.0'}
-            )
+            req = urllib.request.Request(full_url, headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req) as response:
                 st.session_state.ki_antwort = response.read().decode('utf-8')
         except Exception as e:
-            st.session_state.ki_antwort = "Ich konnte die Gratis-KI gerade nicht erreichen."
+            st.session_state.ki_antwort = "Ich überlege noch. Bitte sag es noch einmal!"
+
 # Das HTML-System für den Browser
 html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
