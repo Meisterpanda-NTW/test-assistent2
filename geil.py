@@ -1,8 +1,10 @@
 import streamlit as st
 import base64
 import os
+import urllib.request
+import json
 
-st.set_page_config(page_title="Garmin Assistent", page_icon="🤖")
+st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
 st.title("🤖 Garmin KOSTENLOSER KI-Assistent")
 
 # Funktion: Wir wandeln die Musikdateien in unblockierbare Daten-Streams um
@@ -17,6 +19,29 @@ duel_base64 = get_audio_base64("duel.mp3")
 cantina_base64 = get_audio_base64("cantina.mp3")
 hello_base64 = get_audio_base64("hello.mp3")
 
+# SITZUNGS-SPEICHER FÜR DIE KI
+if "ki_antwort" not in st.session_state:
+    st.session_state.ki_antwort = ""
+
+# UNBLOCKIERBARER EMPFÄNGER: Das unsichtbare Streamlit-Textfeld fängt die Frage ab
+sprach_input = st.text_input("Schnittstelle", key="hidden_voice_input", label_visibility="collapsed")
+
+if sprach_input:
+    befehl = sprach_input.lower().strip()
+    
+    # Wenn es KEIN fester Befehl oder Lied ist, funkt PYTHON sicher die KI an!
+    try:
+        url = "https://pollinations.ai"
+        prompt = f"Du bist Garmin, ein cooler, lustiger Sprachassistent. Antworte auf Deutsch und fasse dich extrem kurz in maximal 1 kurzen Satz! Frage: {sprach_input}"
+        
+        req = urllib.request.Request(
+            url + urllib.parse.quote(prompt), 
+            headers={'User-Agent': 'Mozilla/5.0'}
+        )
+        with urllib.request.urlopen(req) as response:
+            st.session_state.ki_antwort = response.read().decode('utf-8')
+    except Exception as e:
+        st.session_state.ki_antwort = "Ich überlege noch. Bitte frag mich gleich nochmal!"
 # Das HTML-System für den Browser
 html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
@@ -122,7 +147,6 @@ if (!Recognition) {
         antwortBox.style.color = textFarbe;
         antwortBox.style.display = "block";
     }
-
     btn.addEventListener('click', () => {
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
         try { rec.start(); } catch(e) {}
@@ -131,7 +155,7 @@ if (!Recognition) {
         antwortBox.style.display = "none";
     });
     
-    rec.onresult = async (e) => {
+    rec.onresult = (e) => {
         const gehoert = e.results[0][0].transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
@@ -146,7 +170,7 @@ if (!Recognition) {
             
             const befehlRein = gehoertLower.replace(/okay garmin|ok garmin|okay gar/g, "").trim();
             
-            // Deine komplette originale Befehlsliste
+            // Feste lokale Befehle prüfen
             if (gehoertLower.includes("hallo")) {
                 antwortText = "Hallo wie kann ich dir helfen";
                 boxFarbe = "#d4edda";
@@ -203,25 +227,18 @@ if (!Recognition) {
                 rec.stop();
             } else if (befehlRein.length > 0) {
                 status.innerText = "🤖 Garmin überlegt...";
-                try {
-                    // KORREKTUR: Wir nutzen die stabilste POST-Abfrage, die niemals blockiert wird
-                    const response = await fetch("https://pollinations.ai", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            messages: [
-                                { role: "system", content: "Du bist Garmin, ein cooler, lustiger Sprachassistent. Antworte auf Deutsch und fasse dich extrem kurz in maximal 1 kurzen Satz!" },
-                                { role: "user", content: befehlRein }
-                            ]
-                        })
-                    });
-                    antwortText = await response.text();
-                    boxFarbe = "#d1ecf1"; 
-                    textFarbe = "#0c5460";
-                } catch (err) {
-                    antwortText = "Das ist eine interessante Frage! Leider kann ich mein Gehirn gerade nicht erreichen.";
-                    boxFarbe = "#fff3cd";
+                const inputs = window.parent.document.getElementsByTagName('input');
+                if (inputs.length > 0) {
+                    inputs[0].value = befehlRein;
+                    inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
+                    inputs[0].dispatchEvent(new Event('change', { bubbles: true }));
+                    
+                    setTimeout(() => {
+                        const form = inputs[0].form;
+                        if (form) form.requestSubmit();
+                    }, 50);
                 }
+                return;
             }
 
             if (antwortText) {
@@ -230,17 +247,38 @@ if (!Recognition) {
                     setTimeout(() => { sprich(antwortText); }, 250);
                 }
             }
-        } else {status.innerText = "Ignoriert (Kein 'Okay Garmin'): '" + gehoert + "'";}btn.style.backgroundColor = "#ff4b4b";
+        } else {
+            status.innerText = "Ignoriert (Kein 'Okay Garmin'): '" + gehoert + "'";
+        }
+        btn.style.backgroundColor = "#ff4b4b";
     };
-
+    
     rec.onerror = () => { btn.style.backgroundColor = "#ff4b4b"; status.innerText = "Bereit fürs iPad. Klicke zum Sprechen."; };
     rec.onend = () => { btn.style.backgroundColor = "#ff4b4b"; };
 }
 </script>
 """
 
-# Platzhalter austauschen
+# Platzhalter für Musik austauschen
 html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
 
-# Haupt-App im iFrame anzeigen
+# Wenn eine KI-Antwort von Python generiert wurde, schleusen wir sie unblockierbar in den Browser ein
+if st.session_state.ki_antwort:
+    js_ki_speech_template = """
+    <script>
+    window.parent.document.getElementById('antwort-box').innerText = "TAUSCH_TEXT";
+    window.parent.document.getElementById('antwort-box').style.backgroundColor = "#d1ecf1";
+    window.parent.document.getElementById('antwort-box').style.color = "#0c5460";
+    window.parent.document.getElementById('antwort-box').style.display = "block";
+    
+    const speech = new SpeechSynthesisUtterance("TAUSCH_TEXT");
+    speech.lang = 'de-DE';
+    window.speechSynthesis.speak(speech);
+    </script>
+    """
+    js_ki_speech_bereit = js_ki_speech_template.replace("TAUSCH_TEXT", st.session_state.ki_antwort)
+    st.components.v1.html(js_ki_speech_bereit, height=0, width=0)
+    st.session_state.ki_antwort = ""
+
+# Haupt-App rendern
 st.components.v1.html(html_bereit, height=270)
