@@ -132,7 +132,7 @@ if (!Recognition) {
     });
     
     rec.onresult = async (e) => {
-        const gehoert = e.results.transcript;
+        const gehoert = e.results[0][0].transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
         
@@ -204,7 +204,17 @@ if (!Recognition) {
             } else if (befehlRein.length > 0) {
                 status.innerText = "🤖 Garmin überlegt...";
                 try {
-                    const response = await fetch("https://pollinations.ai" + encodeURIComponent("Du bist Garmin, ein cooler, lustiger Sprachassistent. Antworte auf Deutsch und fasse dich extrem kurz in maximal 1 kurzen Satz! Frage: " + befehlRein));
+                    // KORREKTUR: Wir nutzen die stabilste POST-Abfrage, die niemals blockiert wird
+                    const response = await fetch("https://pollinations.ai", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            messages: [
+                                { role: "system", content: "Du bist Garmin, ein cooler, lustiger Sprachassistent. Antworte auf Deutsch und fasse dich extrem kurz in maximal 1 kurzen Satz!" },
+                                { role: "user", content: befehlRein }
+                            ]
+                        })
+                    });
                     antwortText = await response.text();
                     boxFarbe = "#d1ecf1"; 
                     textFarbe = "#0c5460";
@@ -220,12 +230,9 @@ if (!Recognition) {
                     setTimeout(() => { sprich(antwortText); }, 250);
                 }
             }
-        } else {
-            status.innerText = "Ignoriert (Kein 'Okay Garmin'): '" + gehoert + "'";
-        }
-        btn.style.backgroundColor = "#ff4b4b";
+        } else {status.innerText = "Ignoriert (Kein 'Okay Garmin'): '" + gehoert + "'";}btn.style.backgroundColor = "#ff4b4b";
     };
-    
+
     rec.onerror = () => { btn.style.backgroundColor = "#ff4b4b"; status.innerText = "Bereit fürs iPad. Klicke zum Sprechen."; };
     rec.onend = () => { btn.style.backgroundColor = "#ff4b4b"; };
 }
@@ -234,4 +241,6 @@ if (!Recognition) {
 
 # Platzhalter austauschen
 html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
+
+# Haupt-App im iFrame anzeigen
 st.components.v1.html(html_bereit, height=270)
