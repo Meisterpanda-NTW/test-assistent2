@@ -131,8 +131,8 @@ if (!Recognition) {
         antwortBox.style.display = "none";
     });
     
-    rec.onresult = (e) => {
-        const gehoert = e.results[0][0].transcript;
+    rec.onresult = async (e) => {
+        const gehoert = e.results.transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
         
@@ -146,6 +146,7 @@ if (!Recognition) {
             
             const befehlRein = gehoertLower.replace(/okay garmin|ok garmin|okay gar/g, "").trim();
             
+            // Deine komplette originale Befehlsliste
             if (gehoertLower.includes("hallo")) {
                 antwortText = "Hallo wie kann ich dir helfen";
                 boxFarbe = "#d4edda";
@@ -202,40 +203,30 @@ if (!Recognition) {
                 rec.stop();
             } else if (befehlRein.length > 0) {
                 status.innerText = "🤖 Garmin überlegt...";
-                // Lädt die KI direkt im Browser-Hintergrund ab
-                                // NEUE UNBLOCKIERBARE KI-ADRESSE
-                fetch("https://corbpie.com" + encodeURIComponent("Du bist Garmin, ein cooler, lustiger Sprachassistent. Antworte auf Deutsch und fasse dich extrem kurz in maximal 1 kurzen Satz! Frage: " + befehlRein))
-                    .then(res => res.json())
-                    .then(data => {
-                        let text = data.response || "Ich höre zu.";
-                        zeigeAntwort(text, "#d1ecf1", "#0c5460");
-                        sprich(text);
-                        btn.style.backgroundColor = "#ff4b4b";
-                    })
-                    .catch(err => {
-                        zeigeAntwort("Fehler bei der Antwort-Ermittlung.", "#f8d7da", "#721c24");
-                        btn.style.backgroundColor = "#ff4b4b";
-                    });
-                return;
+                try {
+                    // STABILE, UNBLOCKIERBARE TEXT-Schnittstelle
+                    const response = await fetch("https://pollinations.ai" + encodeURIComponent("Du bist Garmin, ein cooler, lustiger Sprachassistent. Antworte auf Deutsch und fasse dich extrem kurz in maximal 1 kurzen Satz! Frage: " + befehlRein));
+                    antwortText = await response.text();
+                    boxFarbe = "#d1ecf1"; 
+                    textFarbe = "#0c5460";
+                } catch (err) {
+                    // Falls Pollinations komplett offline ist, weichen wir auf eine smarte, feste Antwort aus, damit es nie wieder abstürzt!
+                    antwortText = "Das ist eine interessante Frage! Leider kann ich mein Gehirn gerade nicht erreichen.";
+                    boxFarbe = "#fff3cd";
+                }
             }
-        }
 
-        if (antwortText) {
-            zeigeAntwort(antwortText, boxFarbe, textFarbe);
-            if (!istMusik) {
-                setTimeout(() => { sprich(antwortText); }, 250);
+            if (antwortText) {
+                zeigeAntwort(antwortText, boxFarbe, textFarbe);
+                if (!istMusik) {
+                    setTimeout(() => { sprich(antwortText); }, 250);
+                }
             }
+        } else {
+            status.innerText = "Ignoriert (Kein 'Okay Garmin'): '" + gehoert + "'";
         }
         btn.style.backgroundColor = "#ff4b4b";
     };
-    
-    rec.onerror = () => { btn.style.backgroundColor = "#ff4b4b"; status.innerText = "Bereit fürs iPad. Klicke zum Sprechen."; };
-    rec.onend = () => { btn.style.backgroundColor = "#ff4b4b"; };
-}
-</script>
-"""
-
-# Platzhalter austauschen
-html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
-# Haupt-App im iFrame anzeigen
-st.components.v1.html(html_bereit, height=270)
+    rec.onerror = () => { btn.style.backgroundColor = "#ff4b4b"; status.innerText = "Bereit fürs iPad. Klicke zum Sprechen."; };rec.onend = () => { btn.style.backgroundColor = "#ff4b4b"; };}
+    html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
+    st.components.v1.html(html_bereit, height=270)
