@@ -23,13 +23,27 @@ hello_base64 = get_audio_base64("hello.mp3")
 if "ki_antwort" not in st.session_state:
     st.session_state.ki_antwort = ""
 
-# UNBLOCKIERBARER EMPFÄNGER: Das unsichtbare Streamlit-Textfeld fängt die Frage ab
+# Dieser CSS-Code versteckt das Tippfeld absolut unsichtbar im Hintergrund
+st.markdown("""
+    <style>
+    div[data-testid="stTextInput"] {
+        position: absolute;
+        top: -500px;
+        left: -500px;
+        opacity: 0;
+        height: 0;
+        width: 0;
+        overflow: hidden;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# Das versteckte Empfänger-Textfeld
 sprach_input = st.text_input("Schnittstelle", key="hidden_voice_input", label_visibility="collapsed")
 
 if sprach_input:
     befehl = sprach_input.lower().strip()
     
-    # Wenn es KEIN fester Befehl oder Lied ist, funkt PYTHON sicher die KI an!
     try:
         url = "https://pollinations.ai"
         prompt = f"Du bist Garmin, ein cooler, lustiger Sprachassistent. Antworte auf Deutsch und fasse dich extrem kurz in maximal 1 kurzen Satz! Frage: {sprach_input}"
@@ -156,6 +170,7 @@ if (!Recognition) {
     });
     
     rec.onresult = (e) => {
+        // EXAKTER INDEX-ZUGRIFF: Holt den erkannten Text fehlerfrei aus dem Browser-System
         const gehoert = e.results[0][0].transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
