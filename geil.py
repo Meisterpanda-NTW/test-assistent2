@@ -17,7 +17,7 @@ duel_base64 = get_audio_base64("duel.mp3")
 cantina_base64 = get_audio_base64("cantina.mp3")
 hello_base64 = get_audio_base64("hello.mp3")
 
-# Das HTML-System für den Browser (Als reiner Text ohne f-String-Fehler!)
+# Das HTML-System für den Browser
 html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
     <button id="mic-btn" style="background-color: #ff4b4b; color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 260px; transition: 0.3s; font-family: sans-serif;">
@@ -131,7 +131,7 @@ if (!Recognition) {
         antwortBox.style.display = "none";
     });
     
-    rec.onresult = async (e) => {
+    rec.onresult = (e) => {
         const gehoert = e.results[0][0].transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
@@ -146,7 +146,6 @@ if (!Recognition) {
             
             const befehlRein = gehoertLower.replace(/okay garmin|ok garmin|okay gar/g, "").trim();
             
-            // Deine komplette originale Befehlsliste
             if (gehoertLower.includes("hallo")) {
                 antwortText = "Hallo wie kann ich dir helfen";
                 boxFarbe = "#d4edda";
@@ -202,34 +201,39 @@ if (!Recognition) {
                 audioPlayer.pause(); 
                 rec.stop();
             } else if (befehlRein.length > 0) {
-                // JETZT DIREKT IM BROWSER: Keine Übereinstimmung? Dann direkt an die Gratis-KI funken!
                 status.innerText = "🤖 Garmin überlegt...";
-                try {
-                    const systemPrompt = "Du bist Garmin, ein cooler, lustiger Sprachassistent. Antworte auf Deutsch und fasse dich extrem kurz in maximal 1 kurzen Satz! Frage: ";
-                    const response = await fetch("https://pollinations.ai" + encodeURIComponent(systemPrompt + befehlRein));
-                    antwortText = await response.text();
-                    boxFarbe = "#d1ecf1"; // Schickes KI-Blau
-                    textFarbe = "#0c5460";
-                } catch (err) {
-                    antwortText = "Ich konnte die KI-Schnittstelle gerade nicht erreichen.";
-                    boxFarbe = "#f8d7da";
-                }
+                // Lädt die KI direkt im Browser-Hintergrund ab
+                fetch("https://pollinations.ai" + encodeURIComponent("Du bist Garmin, ein cooler, lustiger Sprachassistent. Antworte auf Deutsch und fasse dich extrem kurz in maximal 1 kurzen Satz! Frage: " + befehlRein))
+                    .then(res => res.text())
+                    .then(text => {
+                        zeigeAntwort(text, "#d1ecf1", "#0c5460");
+                        sprich(text);
+                        btn.style.backgroundColor = "#ff4b4b";
+                    })
+                    .catch(err => {
+                        zeigeAntwort("Ich konnte die KI gerade nicht erreichen.", "#f8d7da", "#721c24");
+                        btn.style.backgroundColor = "#ff4b4b";
+                    });
+                return;
             }
+        }
 
-            if (antwortText) {
-                zeigeAntwort(antwortText, boxFarbe, textFarbe);
-                if (!istMusik) {
-                    setTimeout(() => { sprich(antwortText); }, 250);
-                }
+        if (antwortText) {
+            zeigeAntwort(antwortText, boxFarbe, textFarbe);
+            if (!istMusik) {
+                setTimeout(() => { sprich(antwortText); }, 250);
             }
-        } else {
-            status.innerText = "Ignoriert (Kein 'Okay Garmin'): '" + gehoert + "'";
         }
         btn.style.backgroundColor = "#ff4b4b";
     };
+    
+    rec.onerror = () => { btn.style.backgroundColor = "#ff4b4b"; status.innerText = "Bereit fürs iPad. Klicke zum Sprechen."; };
+    rec.onend = () => { btn.style.backgroundColor = "#ff4b4b"; };
+}
+</script>
+"""
 
-    rec.onerror = () => { btn.style.backgroundColor = "#ff4b4b"; status.innerText = "Bereit fürs iPad. Klicke zum Sprechen.";
-    };rec.onend = () => { btn.style.backgroundColor = "#ff4b4b"; };
-    }
-    html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
-    st.components.v1.html(html_bereit, height=270)
+# Platzhalter austauschen
+html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
+# Haupt-App im iFrame anzeige
+nst.components.v1.html(html_bereit, height=270)
