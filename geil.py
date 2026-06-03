@@ -19,17 +19,15 @@ duel_base64 = get_audio_base64("duel.mp3")
 cantina_base64 = get_audio_base64("cantina.mp3")
 hello_base64 = get_audio_base64("hello.mp3")
 
-# VERSTECKTE SCHNITTSTELLE FÜR DIE KI
+# DIE RETTUNG: Wir holen uns den gesprochenen Befehl absolut sicher direkt aus der Web-Adresse!
+query_params = st.query_params
+sprach_input = query_params.get("speech", "")
+
+# Falls eine Antwort generiert wurde, merken wir sie uns im Session State
 if "ki_antwort" not in st.session_state:
     st.session_state.ki_antwort = ""
-if "gehoert_text" not in st.session_state:
-    st.session_state.gehoert_text = ""
 
-# Ein unsichtbares Textfeld, das die Sprachdaten an Python übergibt
-sprach_input = st.text_input("Schnittstelle", key="ghost_input", label_visibility="collapsed")
-
-if sprach_input and sprach_input != st.session_state.gehoert_text:
-    st.session_state.gehoert_text = sprach_input
+if sprach_input:
     befehl = sprach_input.lower().strip()
     
     # Prüfen, ob es einer deiner festen Spezial-Befehle oder Lieder ist:
@@ -39,22 +37,24 @@ if sprach_input and sprach_input != st.session_state.gehoert_text:
             ist_spezial = True
             break
             
-    # Wenn es KEIN fester Befehl ist, fragen wir die stabilere Gratis-KI!
-    if not ist_spezial and len(befehl) > 0:
+    # Wenn es KEIN fester Befehl ist, fragen wir die Gratis-KI!
+    if not ist_spezial and len(befehl) > 0 and "ki_antwort_bereit" not in st.session_state:
         try:
-            # Wir nutzen das zuverlässigere, freie Modell über text.pollinations mit einem erzwungenen system-prompt
             url = "https://pollinations.ai"
-            system_setting = "Du bist Garmin, ein cooler, lustiger Sprachassistent. Antworte auf Deutsch und fasse dich extrem kurz in maximal 1 kurzen Satz! Frage: "
-            full_url = url + urllib.parse.quote(system_setting + sprach_input)
+            prompt = f"Du bist Garmin, ein cooler, lustiger Sprachassistent. Antworte auf Deutsch und fasse dich extrem kurz in maximal 1 kurzen Satz! Frage: {sprach_input}"
             
-            req = urllib.request.Request(full_url, headers={'User-Agent': 'Mozilla/5.0'})
+            req = urllib.request.Request(
+                url + urllib.parse.quote(prompt), 
+                headers={'User-Agent': 'Mozilla/5.0'}
+            )
             with urllib.request.urlopen(req) as response:
                 st.session_state.ki_antwort = response.read().decode('utf-8')
+                st.session_state.ki_antwort_bereit = True
         except Exception as e:
-            st.session_state.ki_antwort = "Ich überlege noch. Bitte sag es noch einmal!"
-
-# Das HTML-System für den Browser
-html_reine_web_app = """
+            st.session_state.ki_antwort = "Ich konnte die Gratis-KI gerade nicht erreichen."
+            st.session_state.ki_antwort_bereit = True
+# Das HTML-System für den Browser (Sendet Daten unblockierbar über die Web-Adresse)
+html_reine_web_app = f"""
 <div style="text-align: center; margin-bottom: 20px;">
     <button id="mic-btn" style="background-color: #ff4b4b; color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 260px; transition: 0.3s; font-family: sans-serif;">
         🎙️ Befehl einsprechen
@@ -70,9 +70,9 @@ const status = document.getElementById('status');
 const antwortBox = document.getElementById('antwort-box');
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-if (!Recognition) {
+if (!Recognition) {{
     status.innerText = "Sprachsteuerung blockiert.";
-} else {
+}} else {{
     const rec = new Recognition();
     rec.lang = 'de-DE';
 
@@ -81,24 +81,24 @@ if (!Recognition) {
 
     const audioPlayer = new Audio();
 
-    function machPiep() {
+    function machPiep() {{
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
         osc.connect(ctx.destination);
         osc.start();
-        setTimeout(() => { osc.stop(); }, 200);
-    }
+        setTimeout(() => {{ osc.stop(); }}, 200);
+    }}
 
-    function spieleStarWars() {
+    function spieleStarWars() {{
         audioPlayer.pause(); 
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const melodie = [
-            {f: 440.00, d: 0.5}, {f: 440.00, d: 0.5}, {f: 440.00, d: 0.5},
-            {f: 349.23, d: 0.35}, {f: 523.25, d: 0.15}, {f: 440.00, d: 0.5},
-            {f: 349.23, d: 0.35}, {f: 523.25, d: 0.15}, {f: 440.00, d: 0.6}
+            {{f: 440.00, d: 0.5}}, {{f: 440.00, d: 0.5}}, {{f: 440.00, d: 0.5}},
+            {{f: 349.23, d: 0.35}}, {{f: 523.25, d: 0.15}}, {{f: 440.00, d: 0.5}},
+            {{f: 349.23, d: 0.35}}, {{f: 523.25, d: 0.15}}, {{f: 440.00, d: 0.6}}
         ];
         let startZeit = ctx.currentTime;
-        melodie.forEach((note) => {
+        melodie.forEach((note) => {{
             const osc = ctx.createOscillator();
             const gainNode = ctx.createGain();
             osc.type = 'sawtooth';
@@ -110,169 +110,167 @@ if (!Recognition) {
             osc.start(startZeit);
             osc.stop(startZeit + note.d);
             startZeit += note.d + 0.05;
-        });
-    }
+        }});
+    }}
 
-    function spieleEchtesDuelOfFates() {
+    function spieleEchtesDuelOfFates() {{
         window.speechSynthesis.cancel();
-        const base64Data = "PLATZHALTER_DUEL_MUSIC";
-        if (base64Data.length > 0) {
+        const base64Data = "{duel_base64}";
+        if (base64Data.length > 0) {{
             audioPlayer.src = "data:audio/mp3;base64," + base64Data;
             audioPlayer.volume = 0.5;
-            audioPlayer.play().catch(e => {});
-        }
-    }
+            audioPlayer.play().catch(e => {{}});
+        }}
+    }}
 
-    function spieleCantinaSong() {
+    function spieleCantinaSong() {{
         window.speechSynthesis.cancel();
-        const base64Data = "PLATZHALTER_CANTINA_MUSIC";
-        if (base64Data.length > 0) {
+        const base64Data = "{cantina_base64}";
+        if (base64Data.length > 0) {{
             audioPlayer.src = "data:audio/mp3;base64," + base64Data;
             audioPlayer.volume = 0.5;
-            audioPlayer.play().catch(e => {});
-        }
-    }
+            audioPlayer.play().catch(e => {{}});
+        }}
+    }}
 
-    function spieleHello() {
+    function spieleHello() {{
         window.speechSynthesis.cancel();
-        const base64Data = "PLATZHALTER_Hello_MUSIC";
-        if (base64Data.length > 0) {
+        const base64Data = "{hello_base64}";
+        if (base64Data.length > 0) {{
             audioPlayer.src = "data:audio/mp3;base64," + base64Data;
             audioPlayer.volume = 0.5;
-            audioPlayer.play().catch(e => {});
-        }
-    }
+            audioPlayer.play().catch(e => {{}});
+        }}
+    }}
 
-    function sprich(text) {
+    function sprich(text) {{
         window.speechSynthesis.cancel(); 
         const speech = new SpeechSynthesisUtterance(text);
         speech.lang = 'de-DE';
         window.speechSynthesis.speak(speech);
-    }
+    }}
 
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', () => {{
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
-        try { rec.start(); } catch(e) {}
+        try {{ rec.start(); }} catch(e) {{}}
         status.innerText = "🔊 Ich höre zu... Sprich jetzt deinen Befehl!";
         btn.style.backgroundColor = "#2baf2b"; 
         antwortBox.style.display = "none";
-    });
+    }});
     
-    rec.onresult = (e) => {
-        const gehoert = e.results.transcript.toLowerCase().trim();
+    rec.onresult = (e) => {{
+        const gehoert = e.results[0][0].transcript;
+        const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
         
         let antwortText = "";
         let boxFarbe = "#e2e2e2";
         let textFarbe = "#333";
 
-        if (gehoert.includes("okay garmin") || gehoert.includes("ok garmin") || gehoert.includes("okay gar")) {
+        if (gehoertLower.includes("okay garmin") || gehoertLower.includes("ok garmin") || gehoertLower.includes("okay gar")) {{
             machPiep(); 
             
-            const befehlRein = gehoert.replace(/okay garmin|ok garmin|okay gar/g, "").trim();
-            
-            if (gehoert.includes("hallo")) {
+            // Lokale Befehle direkt prüfen
+            if (gehoertLower.includes("hallo")) {{
                 antwortText = "Hallo wie kann ich dir helfen";
                 boxFarbe = "#d4edda";
-            } else if (gehoert.includes("fick dich")) {
+            }} else if (gehoertLower.includes("fick dich")) {{
                 antwortText = "dich auch";
                 boxFarbe = "#fff3cd";
-            } else if (gehoert.includes("lukas")) {
+            }} else if (gehoertLower.includes("lukas")) {{
                 antwortText = "nein nicht lukas";
                 boxFarbe = "#f8d7da";
-            } else if (gehoert.includes("kilyan")) {
+            }} else if (gehoertLower.includes("kilyan")) {{
                 antwortText = "dummer sack";
                 boxFarbe = "#fff3cd";
-            } else if (gehoert.includes("fick deine mutter")) {
+            }} else if (gehoertLower.includes("fick deine mutter")) {{
                 antwortText = "deine auch";
                 boxFarbe = "#fff3cd";
-            } else if (gehoert.includes("video speichern")) {
+            }} else if (gehoertLower.includes("video speichern")) {{
                 antwortText = "sieg heil";
                 boxFarbe = "#fff3cd";
-            } else if (gehoert.includes("f*** deine mutter")) {
+            }} else if (gehoertLower.includes("f*** deine mutter")) {{
                 antwortText = "deine auch";
                 boxFarbe = "#fff3cd";
-            } else if (gehoert.includes("traubenzucker")) {
+            }} else if (gehoertLower.includes("traubenzucker")) {{
                 antwortText = "schnupf mehr";
                 boxFarbe = "#fff3cd";
-            } else if (gehoert.includes("sieg heil")) {
+            }} else if (gehoertLower.includes("sieg heil")) {{
                 antwortText = "heil hitler";
                 boxFarbe = "#fff3cd";
-            } else if (gehoert.includes("schule")) { 
+            }} else if (gehoertLower.includes("schule")) {{ 
                 antwortText = "Hölle gefunden 48°27'22.2 Nord 12°21'35.9 Ost";
                 boxFarbe = "#f8d7da";
-            } else if (gehoert.includes("star wars") || gehoert.includes("spiel musik") || gehoert.includes("imperium")) { 
+            }} else if (gehoertLower.includes("star wars") || gehoertLower.includes("spiel musik") || gehoertLower.includes("imperium")) {{ 
                 antwortText = "Möge die Macht mit dir sein.";
                 boxFarbe = "#d1ecf1";
                 spieleStarWars();
-            } else if (gehoert.includes("duel of fates") || gehoert.includes("schicksal") || gehoert.includes("kampf")) { 
+            }} else if (gehoertLower.includes("duel of fates") || gehoertLower.includes("schicksal") || gehoertLower.includes("kampf")) {{ 
                 antwortText = "Spiele dein hochgeladenes Duel of the Fates Thema.";
                 boxFarbe = "#f8d7da";
                 spieleEchtesDuelOfFates(); 
-            } else if (gehoert.includes("cantina") || gehoert.includes("song") || gehoert.includes("bar")) { 
+            }} else if (gehoertLower.includes("cantina") || gehoertLower.includes("song") || gehoertLower.includes("bar")) {{ 
                 antwortText = "Spiele den Cantina Band Song.";
                 boxFarbe = "#fff3cd";
                 spieleCantinaSong(); 
-            } else if (gehoert.includes("hello")) { 
+            }} else if (gehoertLower.includes("hello")) {{ 
                 antwortText = "Spiele Hello Song.";
                 boxFarbe = "#fff3cd";
                 spieleHello(); 
-            } else if (gehoert.includes("beenden") || gehoert.includes("stopp")) {
+            }} else if (gehoertLower.includes("beenden") || gehoertLower.includes("stopp")) {{
                 antwortText = "Musik gestoppt.";
                 boxFarbe = "#d1ecf1";
                 audioPlayer.pause(); 
                 rec.stop();
-            } else if (befehlRein.length > 0) {
-                // INDEX-FIX HIER EINGEBAUT (inputs[0])
-                status.innerText = "🤖 Garmin überlegt...";
-                const inputs = window.parent.document.getElementsByTagName('input');
-                if (inputs.length > 0) {
-                    inputs[0].value = befehlRein;
-                    inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
-                    inputs[0].dispatchEvent(new Event('change', { bubbles: true }));
-                }
-                return;
-            }
-        }
+            }} else {{
+                // REINER KI-WEG: Keine Übereinstimmung gefunden -> Text über die URL an Python übergeben!
+                const befehlRein = gehoertLower.replace(/okay garmin|ok garmin|okay gar/g, "").trim();
+                if (befehlRein.length > 0) {{
+                    status.innerText = "🤖 Übermittle an KI...";
+                    const url = new URL(window.parent.location.href);
+                    url.searchParams.set("speech", befehlRein);
+                    window.parent.location.href = url.toString();
+                    return;
+                }}
+            }}
+        }}
 
-        if (antwortText) {
+        if (antwortText) {{
             antwortBox.innerText = antwortText;
             antwortBox.style.backgroundColor = boxFarbe;
             antwortBox.style.color = textFarbe;
             antwortBox.style.display = "block";
-            if (!gehoert.includes("duel of fates") && !gehoert.includes("cantina") && !gehoert.includes("hello")) {
-                setTimeout(() => { sprich(antwortText); }, 250);
-            }
-        }
+            if (!gehoertLower.includes("duel of fates") && !gehoertLower.includes("cantina") && !gehoertLower.includes("hello")) {{
+                setTimeout(() => {{ sprich(antwortText); }}, 250);
+            }}
+        }}
         btn.style.backgroundColor = "#ff4b4b";
-    };
+    }};
     
-    rec.onerror = () => { btn.style.backgroundColor = "#ff4b4b"; };
-    rec.onend = () => { btn.style.backgroundColor = "#ff4b4b"; };
-}
+    rec.onerror = () => {{ btn.style.backgroundColor = "#ff4b4b"; }};
+    rec.onend = () => {{ btn.style.backgroundColor = "#ff4b4b"; }};
+}}
 </script>
 """
 
-# Platzhalter austauschen
-html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
+# Wenn eine lokale Antwort da ist oder ein Lied läuft, zeigen wir den Status an
+if sprach_input and not st.session_state.ki_antwort:
+    st.info(f"Letzter verarbeiteter Befehl: '{{sprach_input}}'")
 
-# Wenn eine KI-Antwort von Python generiert wurde, spielen wir sie über verstecktes JS im Browser ab
+# Wenn eine KI-Antwort von Python generiert wurde, spielen wir sie ab und LÖSCHEN den URL-Parameter direkt wieder
 if st.session_state.ki_antwort:
     st.success(st.session_state.ki_antwort)
+    
+    # JavaScript löscht den URL-Parameter ?speech=..., damit es beim manuellen Neuladen nicht in Endlosschleife spricht
     js_ki_speech = f"""
     <script>
+    // URL säubern ohne die Seite neu zu laden
+    const url = new URL(window.parent.location.href);
+    url.searchParams.delete("speech");
+    window.parent.history.replaceState({{}}, document.title, url.toString());
+
     window.parent.document.getElementById('antwort-box').innerText = "{st.session_state.ki_antwort}";
     window.parent.document.getElementById('antwort-box').style.backgroundColor = "#d1ecf1";
     window.parent.document.getElementById('antwort-box').style.color = "#0c5460";
     window.parent.document.getElementById('antwort-box').style.display = "block";
     
-    const speech = new SpeechSynthesisUtterance("{st.session_state.ki_antwort}");
-    speech.lang = 'de-DE';
-    window.speechSynthesis.speak(speech);
-    </script>
-    """
-    st.components.v1.html(js_ki_speech, height=0, width=0)
-    st.session_state.ki_antwort = ""
-
-# Haupt-App anzeigen
-st.components.v1.html(html_bereit, height=270)
