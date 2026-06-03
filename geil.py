@@ -203,15 +203,17 @@ if (!Recognition) {
             } else if (befehlRein.length > 0) {
                 status.innerText = "🤖 Garmin überlegt...";
                 // Lädt die KI direkt im Browser-Hintergrund ab
-                fetch("https://pollinations.ai" + encodeURIComponent("Du bist Garmin, ein cooler, lustiger Sprachassistent. Antworte auf Deutsch und fasse dich extrem kurz in maximal 1 kurzen Satz! Frage: " + befehlRein))
-                    .then(res => res.text())
-                    .then(text => {
+                                // NEUE UNBLOCKIERBARE KI-ADRESSE
+                fetch("https://corbpie.com" + encodeURIComponent("Du bist Garmin, ein cooler, lustiger Sprachassistent. Antworte auf Deutsch und fasse dich extrem kurz in maximal 1 kurzen Satz! Frage: " + befehlRein))
+                    .then(res => res.json())
+                    .then(data => {
+                        let text = data.response || "Ich höre zu.";
                         zeigeAntwort(text, "#d1ecf1", "#0c5460");
                         sprich(text);
                         btn.style.backgroundColor = "#ff4b4b";
                     })
                     .catch(err => {
-                        zeigeAntwort("Ich konnte die KI gerade nicht erreichen.", "#f8d7da", "#721c24");
+                        zeigeAntwort("Fehler bei der Antwort-Ermittlung.", "#f8d7da", "#721c24");
                         btn.style.backgroundColor = "#ff4b4b";
                     });
                 return;
