@@ -91,6 +91,22 @@ if sprach_input:
             st.session_state.ki_antwort = antwort
         else:
             st.session_state.ki_antwort = "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!"
+# Der unblockierbare Datenkanal fängt den gesprochenen Satz im Python-Skript ab
+sprach_input = ""
+
+# Überprüfen, ob Daten vom offiziellen JavaScript-SDK angekommen sind
+if "voice_html_tunnel" in st.session_state and st.session_state.voice_html_tunnel:
+    sprach_input = st.session_state.voice_html_tunnel
+
+if sprach_input:
+    # Verhindert, dass derselbe Befehl doppelt ausgeführt wird
+    if "letzter_befehl" not in st.session_state or st.session_state.letzter_befehl != sprach_input:
+        st.session_state.letzter_befehl = sprach_input
+        antwort = frage_ki(sprach_input)
+        if antwort:
+            st.session_state.ki_antwort = antwort
+        else:
+            st.session_state.ki_antwort = "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!"
 
 # Das komplette HTML- und JavaScript-System für den Browser
 html_reine_web_app = """
@@ -184,8 +200,7 @@ if (!Recognition) {
     });
     
     rec.onresult = (e) => {
-        // EXAKTER INDEX-FIX: Holt den Text absolut sauber bei jedem Klick heraus!
-        const gehoert = e.results[0][0].transcript;
+        const gehoert = e.results[0][0].transcript; // DER INDEX-FIX: Holt den Text fehlerfrei bei jedem Klick!
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
         machPiep();
@@ -201,7 +216,7 @@ if (!Recognition) {
             rec.stop();
         } else if (gehoertLower.length > 0) {
             status.innerText = "🤖 Garmin überlegt...";
-            // Übermittelt den Text legal ohne iFrame-Sperren an Streamlit
+            // Übermittelt den Text legal und unblockierbar über das offizielle Streamlit SDK
             Streamlit.setComponentValue(gehoert);
         }
     };
@@ -215,8 +230,10 @@ if (!Recognition) {
 # Ersetzt alle Musik-Platzhalter absolut crashsicher direkt in Python
 html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
 
-# Wenn Python die KI-Antwort fertig berechnet hat, zeigen wir sie an und lesen sie laut vor
+# Wenn Python die KI-Antwort fertig berechnet hat, spielen wir sie an
 if st.session_state.ki_antwort:
+    st.success(st.session_state.ki_antwort)
+    
     js_ki_speech_template = """
     <script>
     window.parent.document.getElementById('antwort-box').innerText = "TAUSCH_TEXT";
@@ -230,9 +247,12 @@ if st.session_state.ki_antwort:
     </script>
     """
     js_ki_speech_bereit = js_ki_speech_template.replace("TAUSCH_TEXT", st.session_state.ki_antwort)
-    st.components.v1.html(js_ki_speech_bereit, height=0, width=0)
-    
+    # HIER REPARIERT 1: Fester, legaler Zahlen-Key!
+    st.components.v1.html(js_ki_speech_bereit, height=0, width=0, key=1)
     st.session_state.ki_antwort = ""
+
+# HIER REPARIERT 2: Fester, legaler Zahlen-Key für die Haupt-App!
+st.components.v1.html(html_bereit, height=270, key=2)
 
 # HIER REPARIERT: Kein 'key=' Argument mehr am Ende, das den TypeError auslöst!
 st.components.v1.html(html_bereit, height=270)
