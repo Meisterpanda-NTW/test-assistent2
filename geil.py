@@ -8,7 +8,7 @@ from google.genai import types
 st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
 st.title("🤖 Garmin REINER KI-ASSISTENT")
 
-# 1. HIER DEINE EIGENEN GOOGLE GEMINI SCHLÜSSEL EINTRAGEN:
+# HIER DEINE EIGENEN GOOGLE GEMINI SCHLÜSSEL EINTRAGEN:
 API_KEYS = ["HIER_DEIN_ERSTER_GEMINI_KEY", "HIER_DEIN_ZWEITER_GEMINI_KEY"]
 aktueller_key_index = 0
 
@@ -66,14 +66,30 @@ def frage_ki(text):
             continue
     return "Alle API-Schlüssel sind für heute voll!"
 
-# Holt sich den Text absolut sicher aus der Webadresse
-query_params = st.query_params
-sprach_input = query_params.get("speech", "")
+# Das unblockierbare native Streamlit-Formular (unsichtbar im Hintergrund)
+with st.form(key="hidden_form", clear_on_submit=True):
+    sprach_input = st.text_input("Schnittstelle", label_visibility="collapsed")
+    submit_button = st.form_submit_button("Senden")
 
-if sprach_input and "ki_verarbeitet" not in st.session_state:
+# Wenn der Button im HTML-Formular geklickt wird, rechnet Python die KI-Antwort aus
+if submit_button and sprach_input:
     st.session_state.ki_antwort = frage_ki(sprach_input)
-    st.session_state.ki_verarbeitet = True
-# Das komplette HTML- und JavaScript-System für den Browser (Teil 2)
+
+# CSS, um das hässliche Streamlit-Formular komplett unsichtbar zu machen
+st.markdown("""
+    <style>
+    div[data-testid="stForm"] {
+        position: absolute !important;
+        top: -1000px !important;
+        left: -1000px !important;
+        opacity: 0 !important;
+        height: 0px !important;
+        width: 0px !important;
+        overflow: hidden !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+# Das komplette HTML- und JavaScript-System für den Browser (Teil 2B)
 html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
     <button id="mic-btn" style="background-color: #ff4b4b; color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 260px; transition: 0.3s; font-family: sans-serif;">
@@ -140,6 +156,20 @@ if (!Recognition) {
         }
     }
 
+    function sprich(text) {
+        window.speechSynthesis.cancel(); 
+        const speech = new SpeechSynthesisUtterance(text);
+        speech.lang = 'de-DE';
+        window.speechSynthesis.speak(speech);
+    }
+
+    function zeigeAntwort(text, bgFarbe, textFarbe) {
+        antwortBox.innerText = text;
+        antwortBox.style.backgroundColor = bgFarbe;
+        antwortBox.style.color = textFarbe;
+        antwortBox.style.display = "block";
+    }
+
     btn.addEventListener('click', () => {
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
         try { rec.start(); } catch(e) {}
@@ -149,7 +179,7 @@ if (!Recognition) {
     });
     
     rec.onresult = (e) => {
-        const gehoert = e.results[0][0].transcript; // ABSOLUT SICHERER UND REPARIERTER SYSTEM-INDEX
+        const gehoert = e.results[0][0].transcript; // DER FIX: Greift absolut präzise auf den Sprach-Index zu!
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
         machPiep();
@@ -165,10 +195,25 @@ if (!Recognition) {
             rec.stop();
         } else if (gehoertLower.length > 0) {
             status.innerText = "🤖 Garmin überlegt...";
-            // NUTZT NUN DIE OFFIZIELLE STREAMLIT URL-API (Keine iFrame-Blockade mehr!)
-            const url = new URL(window.parent.location.href);
-            url.searchParams.set("speech", gehoertLower);
-            window.parent.location.href = url.toString();
+            
+            // UNBLOCKIERBAR: Wir greifen auf das versteckte Textfeld im Streamlit-Hauptfenster zu
+            const inputs = window.parent.document.getElementsByTagName('input');
+            if (inputs.length > 0) {
+                const targetInput = inputs[0];
+                targetInput.value = gehoert;
+                
+                // Triggert die Events, damit Streamlit merkt, dass Text drinsteht
+                targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+                targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                // Löst das Absenden des nativen Formulars ohne iFrame-Sperren aus
+                setTimeout(() => {
+                    const form = targetInput.form;
+                    if (form) {
+                        form.requestSubmit();
+                    }
+                }, 50);
+            }
         }
     };
     
@@ -178,19 +223,15 @@ if (!Recognition) {
 </script>
 """
 
-# Erst hier werden alle Platzhalter absolut crashsicher in Python getauscht
+# Ersetzt alle Musik-Platzhalter absolut crashsicher direkt in Python
 html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
 
-# Wenn eine KI-Antwort bereitliegt, zeigen wir sie an und räumen den URL-Parameter sofort sauber auf
+# Wenn Python die KI-Antwort fertig berechnet hat, zeigen wir sie an und lesen sie laut vor
 if st.session_state.ki_antwort:
     st.success(st.session_state.ki_antwort)
     
     js_ki_speech_template = """
     <script>
-    const url = new URL(window.parent.location.href);
-    url.searchParams.delete("speech");
-    window.parent.history.replaceState({}, document.title, url.toString());
-
     window.parent.document.getElementById('antwort-box').innerText = "TAUSCH_TEXT";
     window.parent.document.getElementById('antwort-box').style.backgroundColor = "#d1ecf1";
     window.parent.document.getElementById('antwort-box').style.color = "#0c5460";
@@ -204,8 +245,7 @@ if st.session_state.ki_antwort:
     js_ki_speech_bereit = js_ki_speech_template.replace("TAUSCH_TEXT", st.session_state.ki_antwort)
     st.components.v1.html(js_ki_speech_bereit, height=0, width=0)
     
+    # State leeren für den nächsten Befehl
     st.session_state.ki_antwort = ""
-    if "ki_verarbeitet" in st.session_state:
-        del st.session_state.ki_verarbeitet
 
 st.components.v1.html(html_bereit, height=270)
