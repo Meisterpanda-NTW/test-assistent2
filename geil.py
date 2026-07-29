@@ -2,26 +2,14 @@ import streamlit as st
 import base64
 import os
 import time
-import google.genai as genai  # HIER REPARIERT: Lädt genai so, wie der Client es braucht!
-from google.genai import types
-import google.genai.errors
-import streamlit as st
-import base64
-import os
-import time
 import google.genai as genai
 from google.genai import types
 
 st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
 st.title("🤖 Garmin KOSTENLOSER KI-Assistent")
 
-API_KEYS = [
-    "AQ.Ab8RN6Ld69Gz_Fbbj0fC-WCFh3W-zvy8O_9427zfsCicJcGkhA",
-    "AQ.Ab8RN6I2k3elYSE-o4jUQKn0GZFJWn6cYDxC6lH5FjVwtxdPUw",  # optional, falls du ein 2. Konto hast
-    "AQ.Ab8RN6LnllSVLqIREnCKC9J6MGggedHcqGgo144ArtCl_pK06w",
-    "AQ.Ab8RN6JxNkBfYtLIzEZKgIsD7R2wGQzMeUJ1_i3DCTnUv1kJqQ"
-]
-
+# 1. HIER DEINE EIGENEN GOOGLE GEMINI SCHLÜSSEL EINTRAGEN:
+API_KEYS = ["HIER_DEIN_ERSTER_GEMINI_KEY", "HIER_DEIN_ZWEITER_GEMINI_KEY"]
 aktueller_key_index = 0
 
 # Funktion: Wir wandeln die Musikdateien in unblockierbare Daten-Streams um
@@ -58,6 +46,7 @@ def frage_ki(text):
         if client is None:
             client = initialisiere_client()
         try:
+            # FIX: Nutzt die offizielle, stabile Google API-Schnittstelle statt wackeliger URLs
             response = client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=text,
@@ -75,7 +64,7 @@ def frage_ki(text):
             )
             return response.text
         except Exception as e:
-            # Key aufgebraucht -> Wechsle unbemerkt zum nächsten Schlüssel!
+            # Automatischer Wechsel zum nächsten Key bei Überlastung
             aktueller_key_index = (aktueller_key_index + 1) % len(API_KEYS)
             client = initialisiere_client()
             time.sleep(1)
@@ -83,13 +72,14 @@ def frage_ki(text):
             
     return "Alle API-Schlüssel sind für heute voll! Bitte kurz warten."
 
-# Wir holen uns den gesprochenen Text absolut sicher direkt aus der Web-Adresse!
+# Wir holen uns den gesprochenen Text absolut sicher direkt aus der Web-Adresse
 query_params = st.query_params
 sprach_input = query_params.get("speech", "")
 
 if sprach_input and "ki_verarbeitet" not in st.session_state:
     st.session_state.ki_antwort = frage_ki(sprach_input)
     st.session_state.ki_verarbeitet = True
+
 # Das komplette HTML- und JavaScript-System für den Browser (Teil A)
 html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
