@@ -36,10 +36,9 @@ if "ki_antwort" not in st.session_state:
 # DEIN ORIGINALER MINECRAFT INITIALISIERUNGS-CODE
 def initialisiere_client():
     global aktueller_key_index
-    if not API_KEYS or API_KEYS[0].startswith("Hier dein"):
+    if not API_KEYS or API_KEYS[0].startswith("HIER_DEIN"): # HIER REPARIERT!
         return None
     key = API_KEYS[aktueller_key_index]
-    print(f"[INFO] Aktiver Key-Index: {aktueller_key_index} ({key[:8]}...)")
     return genai.Client(api_key=key)
 
 client = initialisiere_client()
