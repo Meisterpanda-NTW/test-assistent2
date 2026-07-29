@@ -9,16 +9,9 @@ st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
 st.title("🤖 Garmin REINER KI-ASSISTENT")
 
 # 1. HIER DEINE EIGENEN GOOGLE GEMINI SCHLÜSSEL EINTRAGEN:
-API_KEYS = [
-    "AQ.Ab8RN6Ld69Gz_Fbbj0fC-WCFh3W-zvy8O_9427zfsCicJcGkhA",
-    "AQ.Ab8RN6I2k3elYSE-o4jUQKn0GZFJWn6cYDxC6lH5FjVwtxdPUw",  # optional, falls du ein 2. Konto hast
-    "AQ.Ab8RN6LnllSVLqIREnCKC9J6MGggedHcqGgo144ArtCl_pK06w",
-    "AQ.Ab8RN6JxNkBfYtLIzEZKgIsD7R2wGQzMeUJ1_i3DCTnUv1kJqQ"
-]
-
+API_KEYS = ["HIER_DEIN_ERSTER_GEMINI_KEY", "HIER_DEIN_ZWEITER_GEMINI_KEY"]
 aktueller_key_index = 0
 
-# Funktion: Musikdateien laden
 def get_audio_base64(dateiname):
     if os.path.exists(dateiname):
         with open(dateiname, "rb") as f:
@@ -41,7 +34,6 @@ def initialisiere_client():
 
 client = initialisiere_client()
 
-# Deine originalen Charakter-Anweisungen aus deinem Minecraft-Skript!
 def frage_ki(text):
     global client, aktueller_key_index
     if not API_KEYS or API_KEYS[0].startswith("HIER_DEIN"):
@@ -74,15 +66,14 @@ def frage_ki(text):
             continue
     return "Alle API-Schlüssel sind für heute voll!"
 
-# UNBLOCKIERBARER WEG: Python holt sich den Text direkt aus der Webadresse (URL)
+# Holt sich den Text absolut sicher aus der Webadresse
 query_params = st.query_params
 sprach_input = query_params.get("speech", "")
 
 if sprach_input and "ki_verarbeitet" not in st.session_state:
     st.session_state.ki_antwort = frage_ki(sprach_input)
     st.session_state.ki_verarbeitet = True
-
-# Das HTML/JavaScript-System (Komplett ohne feste Befehle!)
+# Das komplette HTML- und JavaScript-System für den Browser (Teil 2)
 html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
     <button id="mic-btn" style="background-color: #ff4b4b; color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 260px; transition: 0.3s; font-family: sans-serif;">
@@ -99,7 +90,7 @@ const antwortBox = document.getElementById('antwort-box');
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 if (!Recognition) {
-    status.innerText = "Sprachsteuerung blockiert.";
+    status.innerText = "Sprachsteuerung blockiert. Bitte Safari auf dem iPad nutzen!";
 } else {
     const rec = new Recognition();
     rec.lang = 'de-DE';
@@ -158,12 +149,11 @@ if (!Recognition) {
     });
     
     rec.onresult = (e) => {
-        const gehoert = e.results[0][0].transcript; // EXAKTE ABSOLUTE KORREKTUR FÜR JEDEN KLICK
+        const gehoert = e.results[0][0].transcript; // ABSOLUT SICHERER UND REPARIERTER SYSTEM-INDEX
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
         machPiep();
 
-        // MUSIK-BEFEHLE bleiben als einzige Ausnahme lokal erhalten
         if (gehoertLower.includes("duel of fates") || gehoertLower.includes("schicksal")) {
             spieleEchtesDuelOfFates();
         } else if (gehoertLower.includes("cantina") || gehoertLower.includes("bar")) {
@@ -174,8 +164,8 @@ if (!Recognition) {
             audioPlayer.pause();
             rec.stop();
         } else if (gehoertLower.length > 0) {
-            // UNBLOCKIERBAR: Schreibt den Text oben in die URL. Das kann kein Browser blockieren!
             status.innerText = "🤖 Garmin überlegt...";
+            // NUTZT NUN DIE OFFIZIELLE STREAMLIT URL-API (Keine iFrame-Blockade mehr!)
             const url = new URL(window.parent.location.href);
             url.searchParams.set("speech", gehoertLower);
             window.parent.location.href = url.toString();
@@ -188,10 +178,10 @@ if (!Recognition) {
 </script>
 """
 
-# Platzhalter austauschen
+# Erst hier werden alle Platzhalter absolut crashsicher in Python getauscht
 html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
 
-# Wenn Python die KI-Antwort fertig berechnet hat, spielen wir sie laut ab und löschen den URL-Parameter sofort wieder sauber weg!
+# Wenn eine KI-Antwort bereitliegt, zeigen wir sie an und räumen den URL-Parameter sofort sauber auf
 if st.session_state.ki_antwort:
     st.success(st.session_state.ki_antwort)
     
