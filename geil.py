@@ -31,12 +31,12 @@ if "ki_antwort" not in st.session_state:
 # DEIN ORIGINALER MINECRAFT INITIALISIERUNGS-CODE
 def initialisiere_client():
     global aktueller_key_index
-    if not API_KEYS or API_KEYS[0].startswith(API_KEYS = [
+    if not API_KEYS or API_KEYS[0].startswith(
     "AQ.Ab8RN6Ld69Gz_Fbbj0fC-WCFh3W-zvy8O_9427zfsCicJcGkhA",
     "AQ.Ab8RN6I2k3elYSE-o4jUQKn0GZFJWn6cYDxC6lH5FjVwtxdPUw",  # optional, falls du ein 2. Konto hast
     "AQ.Ab8RN6LnllSVLqIREnCKC9J6MGggedHcqGgo144ArtCl_pK06w",
     "AQ.Ab8RN6JxNkBfYtLIzEZKgIsD7R2wGQzMeUJ1_i3DCTnUv1kJqQ"
-]):
+):
         return None
     key = API_KEYS[aktueller_key_index]
     print(f"[INFO] Aktiver Key-Index: {aktueller_key_index} ({key[:8]}...)")
