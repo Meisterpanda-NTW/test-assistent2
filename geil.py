@@ -204,13 +204,8 @@ if (!Recognition) {
     btn.addEventListener('click', () => {
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
         try { rec.start(); } catch(e) {}
-        
-        // Der Status prüft jetzt unlöschbar den Browser-Sitzungsspeicher
-        if (sessionStorage.getItem("garminWach") === "true") {
-            status.innerText = "🔊 Garmin ist wach! Sag mir einfach, was du willst.";
-        } else {
-            status.innerText = "🔊 Ich höre zu... Starte mit 'Okay Garmin'!";
-        }
+        // Der Statustext ist jetzt direkt startbereit, ohne nach "Okay Garmin" zu verlangen
+        status.innerText = "🔊 Ich höre dir zu! Sag mir einfach, was du willst.";
         btn.style.backgroundColor = "#2baf2b"; 
         antwortBox.style.display = "none";
     });
@@ -225,99 +220,88 @@ if (!Recognition) {
         let textFarbe = "#333";
         let istMusik = false;
 
-        // Prüft den unlöschbaren Sitzungsspeicher statt einer flüchtigen Variable
-        const istSchonWach = sessionStorage.getItem("garminWach") === "true";
-        const hatAufgeweckt = gehoertLower.includes("okay garmin") || gehoertLower.includes("ok garmin") || gehoertLower.includes("okay gar");
+        machPiep(); 
+        
+        // Jedes gesprochene Wort ist jetzt direkt der reine Befehl für Garmin!
+        const befehlRein = gehoertLower.trim();
+        
+        // Deine komplette originale Befehlsliste
+        if (gehoertLower.includes("hallo")) {
+            antwortText = "Hallo wie kann ich dir helfen";
+            boxFarbe = "#d4edda";
+        } else if (gehoertLower.includes("fick dich")) {
+            antwortText = "dich auch";
+            boxFarbe = "#fff3cd";
+        } else if (gehoertLower.includes("lukas")) {
+            antwortText = "nein nicht lukas";
+            boxFarbe = "#f8d7da";
+        } else if (gehoertLower.includes("kilyan")) {
+            antwortText = "dummer sack";
+            boxFarbe = "#fff3cd";
+        } else if (gehoertLower.includes("fick deine mutter")) {
+            antwortText = "deine auch";
+            boxFarbe = "#fff3cd";
+        } else if (gehoertLower.includes("video speichern")) {
+            antwortText = "sieg heil";
+            boxFarbe = "#fff3cd";
+        } else if (gehoertLower.includes("f*** deine mutter")) {
+            antwortText = "deine auch";
+            boxFarbe = "#fff3cd";
+        } else if (gehoertLower.includes("traubenzucker")) {
+            antwortText = "schnupf mehr";
+            boxFarbe = "#fff3cd";
+        } else if (gehoertLower.includes("sieg heil")) {
+            antwortText = "heil hitler";
+            boxFarbe = "#fff3cd";
+        } else if (gehoertLower.includes("schule")) { 
+            antwortText = "Hölle gefunden 48°27'22.2 Nord 12°21'35.9 Ost";
+            boxFarbe = "#f8d7da";
+        } else if (gehoertLower.includes("star wars") || gehoertLower.includes("spiel musik") || gehoertLower.includes("imperium")) { 
+            antwortText = "Möge die Macht mit dir sein.";
+            boxFarbe = "#d1ecf1";
+            spieleStarWars();
+        } else if (gehoertLower.includes("duel of fates") || gehoertLower.includes("schicksal") || gehoertLower.includes("kampf")) { 
+            antwortText = "Spiele dein hochgeladenes Duel of the Fates Thema.";
+            boxFarbe = "#f8d7da";
+            istMusik = true;
+            spieleEchtesDuelOfFates(); 
+        } else if (gehoertLower.includes("cantina") || gehoertLower.includes("song") || gehoertLower.includes("bar")) { 
+            antwortText = "Spiele den Cantina Band Song.";
+            boxFarbe = "#fff3cd";
+            istMusik = true;
+            spieleCantinaSong(); 
+        } else if (gehoertLower.includes("hello")) { 
+            antwortText = "Spiele Hello Song.";
+            boxFarbe = "#fff3cd";
+            istMusik = true;
+            spieleHello(); 
+        } else if (gehoertLower.includes("beenden") || gehoertLower.includes("stopp")) {
+            antwortText = "Musik gestoppt.";
+            boxFarbe = "#d1ecf1";
+            audioPlayer.pause(); 
+            rec.stop();
+        } else if (befehlRein.length > 0) {
+            // UNBLOCKIERBAR: Schickt jede Frage sofort ohne "Okay Garmin"-Filter an dein Python-KI-Gehirn
+            status.innerText = "🤖 Garmin überlegt...";
+            const inputs = window.parent.document.getElementsByTagName('input');
+            if (inputs.length > 0) {
+                inputs[0].value = befehlRein;
+                inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
+                inputs[0].dispatchEvent(new Event('change', { bubbles: true }));
+                
+                setTimeout(() => {
+                    const form = inputs[0].form;
+                    if (form) form.requestSubmit();
+                }, 50);
+            }
+            return;
+        }
 
-        if (istSchonWach || hatAufgeweckt) {
-            if (hatAufgeweckt) {
-                // Aktiviert die Flagge unlöschbar im Browser-Speicher
-                sessionStorage.setItem("garminWach", "true");
+        if (antwortText) {
+            zeigeAntwort(antwortText, boxFarbe, textFarbe);
+            if (!istMusik) {
+                setTimeout(() => { sprich(antwortText); }, 250);
             }
-            machPiep(); 
-            
-            const befehlRein = gehoertLower.replace(/okay garmin|ok garmin|okay gar/g, "").trim();
-            
-            // Deine komplette originale Befehlsliste
-            if (gehoertLower.includes("hallo")) {
-                antwortText = "Hallo wie kann ich dir helfen";
-                boxFarbe = "#d4edda";
-            } else if (gehoertLower.includes("fick dich")) {
-                antwortText = "dich auch";
-                boxFarbe = "#fff3cd";
-            } else if (gehoertLower.includes("lukas")) {
-                antwortText = "nein nicht lukas";
-                boxFarbe = "#f8d7da";
-            } else if (gehoertLower.includes("kilyan")) {
-                antwortText = "dummer sack";
-                boxFarbe = "#fff3cd";
-            } else if (gehoertLower.includes("fick deine mutter")) {
-                antwortText = "deine auch";
-                boxFarbe = "#fff3cd";
-            } else if (gehoertLower.includes("video speichern")) {
-                antwortText = "sieg heil";
-                boxFarbe = "#fff3cd";
-            } else if (gehoertLower.includes("f*** deine mutter")) {
-                antwortText = "deine auch";
-                boxFarbe = "#fff3cd";
-            } else if (gehoertLower.includes("traubenzucker")) {
-                antwortText = "schnupf mehr";
-                boxFarbe = "#fff3cd";
-            } else if (gehoertLower.includes("sieg heil")) {
-                antwortText = "heil hitler";
-                boxFarbe = "#fff3cd";
-            } else if (gehoertLower.includes("schule")) { 
-                antwortText = "Hölle gefunden 48°27'22.2 Nord 12°21'35.9 Ost";
-                boxFarbe = "#f8d7da";
-            } else if (gehoertLower.includes("star wars") || gehoertLower.includes("spiel musik") || gehoertLower.includes("imperium")) { 
-                antwortText = "Möge die Macht mit dir sein.";
-                boxFarbe = "#d1ecf1";
-                spieleStarWars();
-            } else if (gehoertLower.includes("duel of fates") || gehoertLower.includes("schicksal") || gehoertLower.includes("kampf")) { 
-                antwortText = "Spiele dein hochgeladenes Duel of the Fates Thema.";
-                boxFarbe = "#f8d7da";
-                istMusik = true;
-                spieleEchtesDuelOfFates(); 
-            } else if (gehoertLower.includes("cantina") || gehoertLower.includes("song") || gehoertLower.includes("bar")) { 
-                antwortText = "Spiele den Cantina Band Song.";
-                boxFarbe = "#fff3cd";
-                istMusik = true;
-                spieleCantinaSong(); 
-            } else if (gehoertLower.includes("hello")) { 
-                antwortText = "Spiele Hello Song.";
-                boxFarbe = "#fff3cd";
-                istMusik = true;
-                spieleHello(); 
-            } else if (gehoertLower.includes("beenden") || gehoertLower.includes("stopp") || gehoertLower.includes("schlafen")) {
-                antwortText = "Garmin geht schlafen.";
-                boxFarbe = "#d1ecf1";
-                sessionStorage.setItem("garminWach", "false"); // Setzt den Zustand zurück
-                audioPlayer.pause(); 
-                rec.stop();
-            } else if (befehlRein.length > 0) {
-                status.innerText = "🤖 Garmin überlegt...";
-                const inputs = window.parent.document.getElementsByTagName('input');
-                if (inputs.length > 0) {
-                    inputs[0].value = befehlRein;
-                    inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
-                    inputs[0].dispatchEvent(new Event('change', { bubbles: true }));
-                    
-                    setTimeout(() => {
-                        const form = inputs[0].form;
-                        if (form) form.requestSubmit();
-                    }, 50);
-                }
-                return;
-            }
-
-            if (antwortText) {
-                zeigeAntwort(antwortText, boxFarbe, textFarbe);
-                if (!istMusik) {
-                    setTimeout(() => { sprich(antwortText); }, 250);
-                }
-            }
-        } else {
-            status.innerText = "Ignoriert (Wecke mich erst mit 'Okay Garmin'!): '" + gehoert + "'";
         }
         btn.style.backgroundColor = "#ff4b4b";
     };
