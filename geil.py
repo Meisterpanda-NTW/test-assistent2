@@ -9,12 +9,7 @@ st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
 st.title("🤖 Garmin REINER KI-ASSISTENT")
 
 # HIER DEINE EIGENEN GOOGLE GEMINI SCHLÜSSEL EINTRAGEN:
-API_KEYS = [
-    "AQ.Ab8RN6Ld69Gz_Fbbj0fC-WCFh3W-zvy8O_9427zfsCicJcGkhA",
-    "AQ.Ab8RN6I2k3elYSE-o4jUQKn0GZFJWn6cYDxC6lH5FjVwtxdPUw",  # optional, falls du ein 2. Konto hast
-    "AQ.Ab8RN6LnllSVLqIREnCKC9J6MGggedHcqGgo144ArtCl_pK06w",
-    "AQ.Ab8RN6JxNkBfYtLIzEZKgIsD7R2wGQzMeUJ1_i3DCTnUv1kJqQ"
-]
+API_KEYS = ["HIER_DEIN_ERSTER_GEMINI_KEY", "HIER_DEIN_ZWEITER_GEMINI_KEY"]
 aktueller_key_index = 0
 
 def get_audio_base64(dateiname):
@@ -44,7 +39,11 @@ def frage_ki(text):
     if not API_KEYS or API_KEYS[0].startswith("HIER_DEIN"):
         return "Bitte trage deine Gemini API-Keys oben im Python-Code ein!"
         
-    for _ in range(len(API_KEYS)):
+    # Wir zählen mit, wie viele Keys wir in diesem Versuch schon probiert haben
+    versuchte_keys = 0
+    anzahl_keys = len(API_KEYS)
+    
+    while versuchte_keys < anzahl_keys:
         if client is None:
             client = initialisiere_client()
         try:
@@ -65,11 +64,16 @@ def frage_ki(text):
             )
             return response.text
         except Exception as e:
-            aktueller_key_index = (aktueller_key_index + 1) % len(API_KEYS)
+            # Wenn ein Key abklingt oder fehlschlägt, zählen wir einen Versuch hoch
+            versuchte_keys += 1
+            # Wechsle sofort zum nächsten Schlüssel in der Liste
+            aktueller_key_index = (aktueller_key_index + 1) % anzahl_keys
             client = initialisiere_client()
-            time.sleep(1)
+            time.sleep(0.5)
             continue
-    return "Alle API-Schlüssel sind für heute voll!"
+            
+    # Wenn die Schleife durchläuft und ALLE Schlüssel getestet wurden:
+    return "Bruder, alle meine Gehirnzellen sind für heute gegrillt, geht grad gar nix mehr!"
 
 # Das unblockierbare native Streamlit-Formular (unsichtbar im Hintergrund)
 with st.form(key="hidden_form", clear_on_submit=True):
@@ -94,6 +98,7 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
+
 # Das komplette HTML- und JavaScript-System für den Browser (Teil 2B)
 html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
