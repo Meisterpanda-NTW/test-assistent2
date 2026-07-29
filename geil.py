@@ -2,7 +2,6 @@ import streamlit as st
 import base64
 import os
 import time
-import json
 import google.genai as genai
 from google.genai import types
 import google.genai.errors
@@ -10,7 +9,7 @@ import google.genai.errors
 st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
 st.title("🤖 Garmin REINER KI-ASSISTENT")
 
-# HIER DEINE LOKALEN MINECRAFT GEMINI SCHLÜSSEL EINTRAGEN:
+# HIER DEINE EIGENEN GOOGLE GEMINI SCHLÜSSEL EINTRAGEN:
 API_KEYS = [
     "AQ.Ab8RN6Ld69Gz_Fbbj0fC-WCFh3W-zvy8O_9427zfsCicJcGkhA",
     "AQ.Ab8RN6I2k3elYSE-o4jUQKn0GZFJWn6cYDxC6lH5FjVwtxdPUw",  # optional, falls du ein 2. Konto hast
@@ -33,17 +32,15 @@ hello_base64 = get_audio_base64("hello.mp3")
 if "ki_antwort" not in st.session_state:
     st.session_state.ki_antwort = ""
 
-# DEIN ORIGINALER MINECRAFT INITIALISIERUNGS-CODE
 def initialisiere_client():
     global aktueller_key_index
-    if not API_KEYS or API_KEYS[0].startswith("HIER_DEIN"): # HIER REPARIERT!
+    if not API_KEYS or API_KEYS[0].startswith("HIER_DEIN"):
         return None
     key = API_KEYS[aktueller_key_index]
     return genai.Client(api_key=key)
 
 client = initialisiere_client()
 
-# DEINE ORIGINALE MINECRAFT KI-LOGIK (Inklusive exakter Fehlermeldungen)
 def frage_ki(text):
     global client, aktueller_key_index
     
@@ -51,7 +48,6 @@ def frage_ki(text):
         if client is None:
             return None
         try:
-            # Wichtig: Nutzt hier gemini-2.5-flash, da gemini-3.5-flash oft API-Fehler wirft
             response = client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=text,
@@ -69,51 +65,36 @@ def frage_ki(text):
             )
             return response.text
         except google.genai.errors.ClientError as e:
-            if e.code == 429:  # Limit erreicht
+            if e.code == 429:
                 aktueller_key_index = (aktueller_key_index + 1) % len(API_KEYS)
-                print(f"\\n[LIMIT] Key aufgebraucht! Wechsle zu Index: {aktueller_key_index}")
                 client = initialisiere_client()
                 time.sleep(1)
                 continue
             else:
-                print(f"[API-FEHLER] {e}")
                 return None
         except Exception as e:
-            print(f"[FEHLER] Allgemeiner Fehler: {e}")
             return None
-            
-    print("\\n[WARNUNG] ALLE API-Schlüssel sind für heute voll! Warte 5 Minuten...")
     return None
+# Der unblockierbare Datenkanal fängt den gesprochenen Satz im Python-Skript ab
+sprach_input = st.components.v1.html("", height=0)
 
-# Das native Streamlit-Formular fängt das gesprochene Wort vom iPad ab
-with st.form(key="hidden_form", clear_on_submit=True):
-    sprach_input = st.text_input("Schnittstelle", label_visibility="collapsed")
-    submit_button = st.form_submit_button("Senden")
+# Wenn ein Key geladen wurde und Spracheingabe reinkommt, berechnen wir die Antwort
+if "voice_key" not in st.session_state:
+    st.session_state.voice_key = ""
 
-# Triggert dein Minecraft-Gehirn und prüft, ob Schlüssel frei sind
-if submit_button and sprach_input:
+# Überprüfen, ob Daten vom offiziellen JavaScript-SDK angekommen sind
+if "voice_input_component" in st.session_state and st.session_state.voice_input_component:
+    sprach_input = st.session_state.voice_input_component
+
+if sprach_input and sprach_input != st.session_state.voice_key:
+    st.session_state.voice_key = sprach_input
     antwort = frage_ki(sprach_input)
     if antwort:
         st.session_state.ki_antwort = antwort
     else:
-        # HIER DEINE GEWÜNSCHTE ABSAGE: Wenn antwort None ist (alle Keys voll/Fehler), spricht er diesen Text
         st.session_state.ki_antwort = "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!"
 
-# CSS zum Verstecken des Formulars
-st.markdown("""
-    <style>
-    div[data-testid="stForm"] {
-        position: absolute !important;
-        top: -1000px !important;
-        left: -1000px !important;
-        opacity: 0 !important;
-        height: 0px !important;
-        width: 0px !important;
-        overflow: hidden !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
-# Das komplette HTML- und JavaScript-System für den Browser (Teil 2B)
+# Das komplette HTML- und JavaScript-System für den Browser
 html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
     <button id="mic-btn" style="background-color: #ff4b4b; color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 260px; transition: 0.3s; font-family: sans-serif;">
@@ -123,6 +104,8 @@ html_reine_web_app = """
     <div id="antwort-box" style="margin-top: 20px; padding: 15px; border-radius: 8px; font-family: sans-serif; font-weight: bold; display: none; font-size: 16px;"></div>
 </div>
 
+<!-- Das offizielle Streamlit Component SDK, das iFrame-Sperren aushebelt -->
+<script src="https://jsdelivr.net"></script>
 <script>
 const btn = document.getElementById('mic-btn');
 const status = document.getElementById('status');
@@ -219,22 +202,8 @@ if (!Recognition) {
             rec.stop();
         } else if (gehoertLower.length > 0) {
             status.innerText = "🤖 Garmin überlegt...";
-            
-            const inputs = window.parent.document.getElementsByTagName('input');
-            if (inputs.length > 0) {
-                const targetInput = inputs[0];
-                targetInput.value = gehoert;
-                
-                targetInput.dispatchEvent(new Event('input', { bubbles: true }));
-                targetInput.dispatchEvent(new Event('change', { bubbles: true }));
-                
-                setTimeout(() => {
-                    const form = targetInput.form;
-                    if (form) {
-                        form.requestSubmit();
-                    }
-                }, 50);
-            }
+            // NATIVE DIREKT-ÜBERGABE: Sendet die Daten unblockierbar über das offizielle Streamlit SDK
+            Streamlit.setComponentValue(gehoert);
         }
     };
     
@@ -268,4 +237,5 @@ if st.session_state.ki_antwort:
     
     st.session_state.ki_antwort = ""
 
-st.components.v1.html(html_bereit, height=270)
+# Rendert die Hauptanwendung über die offizielle SDK-Komponente
+st.components.v1.html(html_bereit, height=270, key="voice_input_component")
