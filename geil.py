@@ -265,8 +265,9 @@ if (!Recognition) {
 </script>
 """
 
-# Ersetzt alle Platzhalter absolut klammer-sicher direkt in Python
-html_bereit = html_reine_web_app.replace("PLATZHALTER_API_KEY", GEMINI_API_KEY).replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
+
+html_bereit = html_reine_web_app.replace("PLATZHALTER_API_KEY", API_KEYS[0]).replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
+
 
 # Rendert die fertige App
 st.components.v1.html(html_bereit, height=270)
