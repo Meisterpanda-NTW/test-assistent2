@@ -109,6 +109,24 @@ if sprach_input:
             st.session_state.ki_antwort = "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!"
 
 # Das komplette HTML- und JavaScript-System für den Browser
+# Der unblockierbare Datenkanal fängt den gesprochenen Satz im Python-Skript ab
+sprach_input = ""
+
+# Überprüfen, ob Daten vom offiziellen JavaScript-SDK angekommen sind
+if "voice_input_html" in st.session_state and st.session_state.voice_input_html:
+    sprach_input = st.session_state.voice_input_html
+
+if sprach_input:
+    # Verhindert, dass derselbe Befehl doppelt ausgeführt wird
+    if "letzter_befehl" not in st.session_state or st.session_state.letzter_befehl != sprach_input:
+        st.session_state.letzter_befehl = sprach_input
+        antwort = frage_ki(sprach_input)
+        if antwort:
+            st.session_state.ki_antwort = antwort
+        else:
+            st.session_state.ki_antwort = "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!"
+
+# Das komplette HTML- und JavaScript-System für den Browser
 html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
     <button id="mic-btn" style="background-color: #ff4b4b; color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 260px; transition: 0.3s; font-family: sans-serif;">
@@ -200,7 +218,7 @@ if (!Recognition) {
     });
     
     rec.onresult = (e) => {
-        const gehoert = e.results[0][0].transcript; // DER INDEX-FIX: Holt den Text fehlerfrei bei jedem Klick!
+        const gehoert = e.results.transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
         machPiep();
@@ -216,7 +234,7 @@ if (!Recognition) {
             rec.stop();
         } else if (gehoertLower.length > 0) {
             status.innerText = "🤖 Garmin überlegt...";
-            // Übermittelt den Text legal und unblockierbar über das offizielle Streamlit SDK
+            // Hier nutzen wir exakt voice_input_html für das SDK
             Streamlit.setComponentValue(gehoert);
         }
     };
@@ -230,7 +248,7 @@ if (!Recognition) {
 # Ersetzt alle Musik-Platzhalter absolut crashsicher direkt in Python
 html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
 
-# Wenn Python die KI-Antwort fertig berechnet hat, spielen wir sie an
+# Wenn Python die KI-Antwort fertig berechnet hat, zeigen wir sie an
 if st.session_state.ki_antwort:
     st.success(st.session_state.ki_antwort)
     
@@ -247,12 +265,9 @@ if st.session_state.ki_antwort:
     </script>
     """
     js_ki_speech_bereit = js_ki_speech_template.replace("TAUSCH_TEXT", st.session_state.ki_antwort)
-    # HIER REPARIERT 1: Fester, legaler Zahlen-Key!
-    st.components.v1.html(js_ki_speech_bereit, height=0, width=0, key=1)
+    # KORREKTUR 1: String als Key verwendet!
+    st.components.v1.html(js_ki_speech_bereit, height=0, width=0, key="ki_audio_output")
     st.session_state.ki_antwort = ""
 
-# HIER REPARIERT 2: Fester, legaler Zahlen-Key für die Haupt-App!
-st.components.v1.html(html_bereit, height=270, key=2)
-
-# HIER REPARIERT: Kein 'key=' Argument mehr am Ende, das den TypeError auslöst!
-st.components.v1.html(html_bereit, height=270)
+# KORREKTUR 2: String als Key für die Haupt-App verwendet!
+st.components.v1.html(html_bereit, height=270, key="voice_input_html")
