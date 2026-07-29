@@ -232,12 +232,7 @@ if st.session_state.ki_antwort:
     js_ki_speech_bereit = js_ki_speech_template.replace("TAUSCH_TEXT", st.session_state.ki_antwort)
     st.components.v1.html(js_ki_speech_bereit, height=0, width=0)
     
-    # State leeren für den nächsten Befehl
     st.session_state.ki_antwort = ""
 
-# Rendert die Hauptanwendung fehlerfrei ohne den alten Absturz-Key!
+# HIER REPARIERT: Kein 'key=' Argument mehr am Ende, das den TypeError auslöst!
 st.components.v1.html(html_bereit, height=270)
-
-
-# Rendert die Hauptanwendung über die offizielle SDK-Komponente
-st.components.v1.html(html_bereit, height=270, key="voice_input_component")
