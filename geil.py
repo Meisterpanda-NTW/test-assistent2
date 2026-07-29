@@ -26,7 +26,7 @@ duel_base64 = get_audio_base64("duel.mp3")
 cantina_base64 = get_audio_base64("cantina.mp3")
 hello_base64 = get_audio_base64("hello.mp3")
 # Das komplette HTML- und JavaScript-System für den Browser (Teil A)
-html_reine_web_app = f"""
+html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
     <button id="mic-btn" style="background-color: #ff4b4b; color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 260px; transition: 0.3s; font-family: sans-serif;">
         🎙️ Befehl einsprechen
@@ -45,9 +45,9 @@ const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 // Lokale Variable merkt sich im Browser den Wach-Zustand
 let garminWach = false;
 
-if (!Recognition) {{
+if (!Recognition) {
     status.innerText = "Sprachsteuerung blockiert. Bitte Safari (iPad) oder Chrome (PC) nutzen!";
-}} else {{
+} else {
     const rec = new Recognition();
     rec.lang = 'de-DE';
     rec.interimResults = false;
@@ -58,24 +58,24 @@ if (!Recognition) {{
 
     const audioPlayer = new Audio();
 
-    function machPiep() {{
+    function machPiep() {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
         osc.connect(ctx.destination);
         osc.start();
-        setTimeout(() => {{ osc.stop(); }}, 200);
-    }}
+        setTimeout(() => { osc.stop(); }, 200);
+    }
 
-    function spieleStarWars() {{
+    function spieleStarWars() {
         audioPlayer.pause(); 
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const melodie = [
-            {{f: 440.00, d: 0.5}}, {{f: 440.00, d: 0.5}}, {{f: 440.00, d: 0.5}},
-            {{f: 349.23, d: 0.35}}, {{f: 523.25, d: 0.15}}, {{f: 440.00, d: 0.5}},
-            {{f: 349.23, d: 0.35}}, {{f: 523.25, d: 0.15}}, {{f: 440.00, d: 0.6}}
+            {f: 440.00, d: 0.5}, {f: 440.00, d: 0.5}, {f: 440.00, d: 0.5},
+            {f: 349.23, d: 0.35}, {f: 523.25, d: 0.15}, {f: 440.00, d: 0.5},
+            {f: 349.23, d: 0.35}, {f: 523.25, d: 0.15}, {f: 440.00, d: 0.6}
         ];
         let startZeit = ctx.currentTime;
-        melodie.forEach((note) => {{
+        melodie.forEach((note) => {
             const osc = ctx.createOscillator();
             const gainNode = ctx.createGain();
             osc.type = 'sawtooth';
@@ -87,64 +87,65 @@ if (!Recognition) {{
             osc.start(startZeit);
             osc.stop(startZeit + note.d);
             startZeit += note.d + 0.05;
-        }});
-    }}
+        });
+    }
 
-    function spieleEchtesDuelOfFates() {{
+    function spieleEchtesDuelOfFates() {
         window.speechSynthesis.cancel();
-        const base64Data = "{duel_base64}";
-        if (base64Data.length > 0) {{
+        const base64Data = "PLATZHALTER_DUEL_MUSIC";
+        if (base64Data.length > 0) {
             audioPlayer.src = "data:audio/mp3;base64," + base64Data;
             audioPlayer.volume = 0.5;
-            audioPlayer.play().catch(e => {{}});
-        }}
-    }}
+            audioPlayer.play().catch(e => {});
+        }
+    }
 
-    function spieleCantinaSong() {{
+    function spieleCantinaSong() {
         window.speechSynthesis.cancel();
-        const base64Data = "{cantina_base64}";
-        if (base64Data.length > 0) {{
+        const base64Data = "PLATZHALTER_CANTINA_MUSIC";
+        if (base64Data.length > 0) {
             audioPlayer.src = "data:audio/mp3;base64," + base64Data;
             audioPlayer.volume = 0.5;
-            audioPlayer.play().catch(e => {{}});
-        }}
-    }}
+            audioPlayer.play().catch(e => {});
+        }
+    }
 
-    function spieleHello() {{
+    function spieleHello() {
         window.speechSynthesis.cancel();
-        const base64Data = "{hello_base64}";
-        if (base64Data.length > 0) {{
+        const base64Data = "PLATZHALTER_Hello_MUSIC";
+        if (base64Data.length > 0) {
             audioPlayer.src = "data:audio/mp3;base64," + base64Data;
             audioPlayer.volume = 0.5;
-            audioPlayer.play().catch(e => {{}});
-        }}
-    }}
+            audioPlayer.play().catch(e => {});
+        }
+    }
 
-    function sprich(text) {{
+    function sprich(text) {
         window.speechSynthesis.cancel(); 
         const speech = new SpeechSynthesisUtterance(text);
         speech.lang = 'de-DE';
         window.speechSynthesis.speak(speech);
-    }}
+    }
 
-    function zeigeAntwort(text, bgFarbe, textFarbe) {{
+    function zeigeAntwort(text, bgFarbe, textFarbe) {
         antwortBox.innerText = text;
         antwortBox.style.backgroundColor = bgFarbe;
         antwortBox.style.color = textFarbe;
         antwortBox.style.display = "block";
-    }}    btn.addEventListener('click', () => {{
+    }
+    btn.addEventListener('click', () => {
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
-        try {{ rec.start(); }} catch(e) {{}}
-        if (garminWach) {{
+        try { rec.start(); } catch(e) {}
+        if (garminWach) {
             status.innerText = "🔊 Garmin ist wach! Sag mir einfach was du willst.";
-        }} else {{
+        } else {
             status.innerText = "🔊 Ich höre zu... Starte mit 'Okay Garmin'!";
-        }}
+        }
         btn.style.backgroundColor = "#2baf2b"; 
         antwortBox.style.display = "none";
-    }});
+    });
     
-    rec.onresult = async (e) => {{
+    rec.onresult = async (e) => {
         const gehoert = e.results[0][0].transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
@@ -156,113 +157,112 @@ if (!Recognition) {{
 
         const hatAufgeweckt = gehoertLower.includes("okay garmin") || gehoertLower.includes("ok garmin") || gehoertLower.includes("okay gar");
 
-        if (garminWach || hatAufgeweckt) {{
-            if (hatAufgeweckt) {{
+        if (garminWach || hatAufgeweckt) {
+            if (hatAufgeweckt) {
                 garminWach = true;
-            }}
+            }
             machPiep(); 
             
             const befehlRein = gehoertLower.replace(/okay garmin|ok garmin|okay gar/g, "").trim();
             
             // Deine Befehlsliste
-            if (gehoertLower.includes("hallo")) {{
+            if (gehoertLower.includes("hallo")) {
                 antwortText = "Hallo wie kann ich dir helfen";
                 boxFarbe = "#d4edda";
-            }} else if (gehoertLower.includes("fick dich")) {{
+            } else if (gehoertLower.includes("fick dich")) {
                 antwortText = "dich auch";
                 boxFarbe = "#fff3cd";
-            }} else if (gehoertLower.includes("lukas")) {{
+            } else if (gehoertLower.includes("lukas")) {
                 antwortText = "nein nicht lukas";
                 boxFarbe = "#f8d7da";
-            }} else if (gehoertLower.includes("kilyan")) {{
+            } else if (gehoertLower.includes("kilyan")) {
                 antwortText = "dummer sack";
                 boxFarbe = "#fff3cd";
-            }} else if (gehoertLower.includes("fick deine mutter")) {{
+            } else if (gehoertLower.includes("fick deine mutter")) {
                 antwortText = "deine auch";
                 boxFarbe = "#fff3cd";
-            }} else if (gehoertLower.includes("video speichern")) {{
+            } else if (gehoertLower.includes("video speichern")) {
                 antwortText = "sieg heil";
                 boxFarbe = "#fff3cd";
-            }} else if (gehoertLower.includes("f*** deine mutter")) {{
+            } else if (gehoertLower.includes("f*** deine mutter")) {
                 antwortText = "deine auch";
                 boxFarbe = "#fff3cd";
-            }} else if (gehoertLower.includes("traubenzucker")) {{
+            } else if (gehoertLower.includes("traubenzucker")) {
                 antwortText = "schnupf mehr";
                 boxFarbe = "#fff3cd";
-            }} else if (gehoertLower.includes("sieg heil")) {{
+            } else if (gehoertLower.includes("sieg heil")) {
                 antwortText = "heil hitler";
                 boxFarbe = "#fff3cd";
-            }} else if (gehoertLower.includes("schule")) {{ 
+            } else if (gehoertLower.includes("schule")) { 
                 antwortText = "Hölle gefunden 48°27'22.2 Nord 12°21'35.9 Ost";
                 boxFarbe = "#f8d7da";
-            }} else if (gehoertLower.includes("star wars") || gehoertLower.includes("spiel musik") || gehoertLower.includes("imperium")) {{ 
+            } else if (gehoertLower.includes("star wars") || gehoertLower.includes("spiel musik") || gehoertLower.includes("imperium")) { 
                 antwortText = "Möge die Macht mit dir sein.";
                 boxFarbe = "#d1ecf1";
                 spieleStarWars();
-            }} else if (gehoertLower.includes("duel of fates") || gehoertLower.includes("schicksal") || gehoertLower.includes("kampf")) {{ 
+            } else if (gehoertLower.includes("duel of fates") || gehoertLower.includes("schicksal") || gehoertLower.includes("kampf")) { 
                 antwortText = "Spiele dein hochgeladenes Duel of the Fates Thema.";
                 boxFarbe = "#f8d7da";
                 istMusik = true;
                 spieleEchtesDuelOfFates(); 
-            }} else if (gehoertLower.includes("cantina") || gehoertLower.includes("song") || gehoertLower.includes("bar")) {{ 
+            } else if (gehoertLower.includes("cantina") || gehoertLower.includes("song") || gehoertLower.includes("bar")) { 
                 antwortText = "Spiele den Cantina Band Song.";
                 boxFarbe = "#fff3cd";
                 istMusik = true;
                 spieleCantinaSong(); 
-            }} else if (gehoertLower.includes("hello")) {{ 
+            } else if (gehoertLower.includes("hello")) { 
                 antwortText = "Spiele Hello Song.";
                 boxFarbe = "#fff3cd";
                 istMusik = true;
                 spieleHello(); 
-            }} else if (gehoertLower.includes("beenden") || gehoertLower.includes("stopp") || gehoertLower.includes("schlafen")) {{
+            } else if (gehoertLower.includes("beenden") || gehoertLower.includes("stopp") || gehoertLower.includes("schlafen")) {
                 antwortText = "Garmin geht schlafen.";
                 boxFarbe = "#d1ecf1";
                 garminWach = false;
                 audioPlayer.pause(); 
                 rec.stop();
-            }} else if (befehlRein.length > 0) {{
+            } else if (befehlRein.length > 0) {
                 status.innerText = "🤖 Garmin überlegt...";
-                try {{
+                try {
                     const systemPrompt = "Du antwortest immer auf Deutsch. Halte dich kurz und präzise. Rede aus der ich-Perspektive und als wärst du ein Mensch. Verhalte dich so wie wenn einer Hallo schreibt das du mit hallo zurück schreibst und Rechschreib fehler dürfen auch drinnen sein. Und falls einer nach Beleidigungen fragt oder nach anderen verbotenen sachen dann Antworte das du es nicht weißt oder so. und du wenn einer nach bilder fragt dann antworte das du nix schicken darfst weil deine Mutter das verboten hatt. Wenn jemand nach dein Alter frag sag es nicht und die anderen sachen die man nicht online sagen darf. Du sollst wie ein jugendlicher Reden. Antworte in maximal 1-2 sehr kurzen Sätzen!";
                     
-                    // Schickt die Abfrage direkt im Hintergrund an die offizielle Google-API mit dem sicheren Platzhalter
-                    const response = await fetch("https://googleapis.com", {{
+                    const response = await fetch("https://googleapis.com", {
                         method: "POST",
-                        headers: {{ "Content-Type": "application/json" }},
-                        body: JSON.stringify({{
-                            contents: [{{ parts: [{{ text: systemPrompt + " Frage: " + befehlRein }}] }}]
-                        }})
-                    }});
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: systemPrompt + " Frage: " + befehlRein }] }]
+                        })
+                    });
                     const data = await response.json();
                     antwortText = data.candidates[0].content.parts[0].text;
                     boxFarbe = "#d1ecf1"; 
                     textFarbe = "#0c5460";
-                } catch (err) {{
+                } catch (err) {
                     antwortText = "Bruder, mein Gehirn hat gerade Hänger. Frag nochmal!";
                     boxFarbe = "#fff3cd";
-                }}
-            }}
+                }
+            }
 
-            if (antwortText) {{
+            if (antwortText) {
                 zeigeAntwort(antwortText, boxFarbe, textFarbe);
-                if (!istMusik) {{
-                    setTimeout(() => {{ sprich(antwortText); }}, 250);
-                }}
-            }}
-        }} else {{
+                if (!istMusik) {
+                    setTimeout(() => { sprich(antwortText); }, 250);
+                }
+            }
+        } else {
             status.innerText = "Ignoriert (Wecke mich erst mit 'Okay Garmin'!): '" + gehoert + "'";
-        }}
+        }
         btn.style.backgroundColor = "#ff4b4b";
-    }};
+    };
     
-    rec.onerror = () => {{ btn.style.backgroundColor = "#ff4b4b"; status.innerText = "Bereit fürs iPad. Klicke zum Sprechen."; }};
-    rec.onend = () => {{ btn.style.backgroundColor = "#ff4b4b"; }};
-}}
+    rec.onerror = () => { btn.style.backgroundColor = "#ff4b4b"; status.innerText = "Bereit fürs iPad. Klicke zum Sprechen."; };
+    rec.onend = () => { btn.style.backgroundColor = "#ff4b4b"; };
+}
 </script>
 """
 
-# Ersetzt den Platzhalter unblockierbar mit deinem echten Schlüssel aus Teil 1
-html_bereit = html_reine_web_app.replace("PLATZHALTER_API_KEY", GEMINI_API_KEY)
+# Ersetzt alle Platzhalter absolut klammer-sicher direkt in Python
+html_bereit = html_reine_web_app.replace("PLATZHALTER_API_KEY", GEMINI_API_KEY).replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
 
-# Zeigt die fertige Anwendung im Streamlit-Fenster an
+# Rendert die fertige App
 st.components.v1.html(html_bereit, height=270)
