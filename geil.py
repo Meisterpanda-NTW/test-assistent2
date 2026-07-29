@@ -212,9 +212,28 @@ if (!Recognition) {
         btn.style.backgroundColor = "#2baf2b"; 
         antwortBox.style.display = "none";
     });
+        // HIER STARTET TEIL 3: Unzerstörbarer Sitzungs-Speicher für das Aktivierungswort
+    // Wir merken uns im lokalen Browser-Speicher, ob Garmin schon einmal aufgeweckt wurde
+    if (sessionStorage.getItem("garminAktiviert") === null) {
+        sessionStorage.setItem("garminAktiviert", "false");
+    }
+
+    btn.addEventListener('click', () => {
+        window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+        try { rec.start(); } catch(e) {}
+        
+        // Status-Anzeige passt sich an, je nachdem ob er schon aufgeweckt wurde
+        if (sessionStorage.getItem("garminAktiviert") === "true") {
+            status.innerText = "🔊 Garmin ist wach! Sprich einfach deinen Befehl!";
+        } else {
+            status.innerText = "🔊 Ich höre zu... Starte mit 'Okay Garmin'!";
+        }
+        
+        btn.style.backgroundColor = "#2baf2b"; 
+        antwortBox.style.display = "none";
+    });
     
     rec.onresult = (e) => {
-        // EXAKTER INDEX-ZUGRIFF: Holt den erkannten Text fehlerfrei aus dem Browser-System
         const gehoert = e.results[0][0].transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
@@ -224,9 +243,20 @@ if (!Recognition) {
         let textFarbe = "#333";
         let istMusik = false;
 
-        if (gehoertLower.includes("okay garmin") || gehoertLower.includes("ok garmin") || gehoertLower.includes("okay gar")) {
+        // PRÜFUNG: Wurde "Okay Garmin" gesagt ODER ist die Flagge bereits dauerhaft AKTIV?
+        const istSchonWach = sessionStorage.getItem("garminAktiviert") === "true";
+        const hatAufgeweckt = gehoertLower.includes("okay garmin") || gehoertLower.includes("ok garmin") || gehoertLower.includes("okay gar");
+
+        if (istSchonWach || hatAufgeweckt) {
+            
+            // Wenn er frisch aufgeweckt wurde, schalten wir die Flagge JETZT dauerhaft auf true!
+            if (hatAufgeweckt) {
+                sessionStorage.setItem("garminAktiviert", "true");
+            }
+
             machPiep(); 
             
+            // Das Aktivierungswort wird sauber aus dem Satz herausgeschnitten, falls es mitgesprochen wurde
             const befehlRein = gehoertLower.replace(/okay garmin|ok garmin|okay gar/g, "").trim();
             
             // Feste lokale Befehle prüfen
@@ -279,9 +309,11 @@ if (!Recognition) {
                 boxFarbe = "#fff3cd";
                 istMusik = true;
                 spieleHello(); 
-            } else if (gehoertLower.includes("beenden") || gehoertLower.includes("stopp")) {
-                antwortText = "Musik gestoppt.";
+            } else if (gehoertLower.includes("beenden") || gehoertLower.includes("stopp") || gehoertLower.includes("schlafen")) {
+                // EXKLUSIVER GEHEIMBEFEHL: Setzt den Assistenten zurück, sodass er wieder schläft!
+                antwortText = "Garmin wird schlafen gelegt. Du musst mich beim nächsten Mal neu aufwecken.";
                 boxFarbe = "#d1ecf1";
+                sessionStorage.setItem("garminAktiviert", "false"); // Schläft wieder!
                 audioPlayer.pause(); 
                 rec.stop();
             } else if (befehlRein.length > 0) {
@@ -307,7 +339,7 @@ if (!Recognition) {
                 }
             }
         } else {
-            status.innerText = "Ignoriert (Kein 'Okay Garmin'): '" + gehoert + "'";
+            status.innerText = "Ignoriert (Du musst Garmin erst einmal mit 'Okay Garmin' aufwecken!): '" + gehoert + "'";
         }
         btn.style.backgroundColor = "#ff4b4b";
     };
@@ -323,6 +355,8 @@ html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).
 
 # Wenn eine KI-Antwort von Python generiert wurde, schleusen wir sie unblockierbar in den Browser ein
 if st.session_state.ki_antwort:
+    st.success(st.session_state.ki_antwort)
+    
     js_ki_speech_template = """
     <script>
     window.parent.document.getElementById('antwort-box').innerText = "TAUSCH_TEXT";
@@ -341,3 +375,4 @@ if st.session_state.ki_antwort:
 
 # Haupt-App rendern
 st.components.v1.html(html_bereit, height=270)
+
