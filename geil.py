@@ -132,8 +132,7 @@ if (!Recognition) {{
         antwortBox.style.backgroundColor = bgFarbe;
         antwortBox.style.color = textFarbe;
         antwortBox.style.display = "block";
-    }}
-    btn.addEventListener('click', () => {{
+    }}    btn.addEventListener('click', () => {{
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
         try {{ rec.start(); }} catch(e) {{}}
         if (garminWach) {{
@@ -226,7 +225,8 @@ if (!Recognition) {{
                 try {{
                     const systemPrompt = "Du antwortest immer auf Deutsch. Halte dich kurz und präzise. Rede aus der ich-Perspektive und als wärst du ein Mensch. Verhalte dich so wie wenn einer Hallo schreibt das du mit hallo zurück schreibst und Rechschreib fehler dürfen auch drinnen sein. Und falls einer nach Beleidigungen fragt oder nach anderen verbotenen sachen dann Antworte das du es nicht weißt oder so. und du wenn einer nach bilder fragt dann antworte das du nix schicken darfst weil deine Mutter das verboten hatt. Wenn jemand nach dein Alter frag sag es nicht und die anderen sachen die man nicht online sagen darf. Du sollst wie ein jugendlicher Reden. Antworte in maximal 1-2 sehr kurzen Sätzen!";
                     
-                    const response = await fetch("https://googleapis.com{GEMINI_API_KEY}", {{
+                    // Schickt die Abfrage direkt im Hintergrund an die offizielle Google-API mit dem sicheren Platzhalter
+                    const response = await fetch("https://googleapis.com", {{
                         method: "POST",
                         headers: {{ "Content-Type": "application/json" }},
                         body: JSON.stringify({{
@@ -237,7 +237,7 @@ if (!Recognition) {{
                     antwortText = data.candidates[0].content.parts[0].text;
                     boxFarbe = "#d1ecf1"; 
                     textFarbe = "#0c5460";
-                }} catch (err) {{
+                } catch (err) {{
                     antwortText = "Bruder, mein Gehirn hat gerade Hänger. Frag nochmal!";
                     boxFarbe = "#fff3cd";
                 }}
@@ -261,4 +261,8 @@ if (!Recognition) {{
 </script>
 """
 
-st.components.v1.html(html_reine_web_app, height=270)
+# Ersetzt den Platzhalter unblockierbar mit deinem echten Schlüssel aus Teil 1
+html_bereit = html_reine_web_app.replace("PLATZHALTER_API_KEY", GEMINI_API_KEY)
+
+# Zeigt die fertige Anwendung im Streamlit-Fenster an
+st.components.v1.html(html_bereit, height=270)
