@@ -1,11 +1,17 @@
 import streamlit as st
 import base64
 import os
-import urllib.request
-import json
+import time
+from google import genai
+from google.genai import types
+import google.genai.errors
 
 st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
 st.title("🤖 Garmin KOSTENLOSER KI-Assistent")
+
+# 1. HIER DEINE EIGENEN GOOGLE GEMINI SCHLÜSSEL EINTRAGEN:
+API_KEYS = ["HIER_DEIN_ERSTER_GEMINI_KEY", "HIER_DEIN_ZWEITER_GEMINI_KEY"]
+aktueller_key_index = 0
 
 # Funktion: Wir wandeln die Musikdateien in unblockierbare Daten-Streams um
 def get_audio_base64(dateiname):
@@ -22,6 +28,50 @@ hello_base64 = get_audio_base64("hello.mp3")
 # SITZUNGS-SPEICHER FÜR DIE KI
 if "ki_antwort" not in st.session_state:
     st.session_state.ki_antwort = ""
+
+def initialisiere_client():
+    global aktueller_key_index
+    if not API_KEYS or API_KEYS[0].startswith("HIER_DEIN"):
+        return None
+    key = API_KEYS[aktueller_key_index]
+    return genai.Client(api_key=key)
+
+client = initialisiere_client()
+
+def frage_ki(text):
+    global client, aktueller_key_index
+    if not API_KEYS or API_KEYS[0].startswith("HIER_DEIN"):
+        return "Bitte trage deine Gemini API-Keys oben im Python-Code ein!"
+        
+    for _ in range(len(API_KEYS)):
+        if client is None:
+            client = initialisiere_client()
+        try:
+            # Nutzt das ultraschnelle offizielle Gemini Modell
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=text,
+                config=types.GenerateContentConfig(
+                    system_instruction=(
+                        "Du antwortest immer auf Deutsch. Halte dich kurz und präzise. "
+                        "Rede aus der ich-Perspektive und als wärst du ein Mensch. "
+                        "Verhalte dich so wie wenn einer Hallo schreibt das du mit hallo zurück schreibst und Rechschreib fehler dürfen auch drinnen sein. "
+                        "Und falls einer nach Beleidigungen fragt oder nach anderen verbotenen sachen dann Antworte das du es nicht weißt oder so. "
+                        "und du wenn einer nach bilder fragt dann antworte das du nix schicken darfst weil deine Mutter das verboten hatt. "
+                        "Wenn jemand nach dein Alter frag sag es nicht und die anderen sachen die man nicht online sagen darf."
+                        "Du sollst wie ein jugendlicher Reden. Antworte in maximal 1-2 sehr kurzen Sätzen!"
+                    )
+                ),
+            )
+            return response.text
+        except Exception as e:
+            # Falls das Limit erreicht ist, rotieren wir zum nächsten Key
+            aktueller_key_index = (aktueller_key_index + 1) % len(API_KEYS)
+            client = initialisiere_client()
+            time.sleep(1)
+            continue
+            
+    return "Alle API-Schlüssel sind für heute voll! Bitte kurz warten."
 
 # Dieser CSS-Code versteckt das Tippfeld absolut unsichtbar im Hintergrund
 st.markdown("""
@@ -43,34 +93,8 @@ sprach_input = st.text_input("Schnittstelle", key="hidden_voice_input", label_vi
 
 if sprach_input:
     befehl = sprach_input.lower().strip()
-    
-    # Wenn es KEIN fester Befehl oder Lied ist, funkt PYTHON sicher die DuckDuckGo-KI an!
-    try:
-        # Die offizielle, unblockierbare DuckDuckGo KI-Schnittstelle
-        url = "https://duckduckgo.com"
-        # Wir zwingen die KI über eine schlaue DuckDuckGo-Suche zu antworten, falls das direkte API hakt
-        query = f"Du bist Garmin, ein cooler, lustiger Sprachassistent. Antworte auf Deutsch und fasse dich extrem kurz in maximal 1 kurzen Satz! Frage: {sprach_input}"
-        
-        # Stabiler Handshake mit dem DuckDuckGo-Server
-        data = urllib.parse.urlencode({'q': query}).encode('utf-8')
-        req = urllib.request.Request(
-            "https://pollinations.ai" + urllib.parse.quote(query), # Wir nutzen die stabilisierte Ausweichroute
-            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-        )
-        
-        # Falls Pollinations hakt, schalten wir einen ultraschnellen Fallback direkt in Python frei:
-        try:
-            with urllib.request.urlopen(req, timeout=4) as response:
-                st.session_state.ki_antwort = response.read().decode('utf-8')
-        except:
-            # Wenn das Internet komplett blockiert, simuliert Python eine blitzschnelle Garmin-Antwort
-            if "wetter" in befehl: st.session_state.ki_antwort = "Das Wetter ist heute absolut fantastisch zum Fliegen!"
-            elif "witz" in befehl: st.session_state.ki_antwort = "Warum fliegen Vögel im Winter in den Süden? Weil Gehen zu lange dauert!"
-            elif "uhr" in befehl: st.session_state.ki_antwort = "Es ist genau die richtige Zeit, um Garmin zu benutzen!"
-            else: st.session_state.ki_antwort = f"Ich habe '{sprach_input}' verstanden! Lass uns das rocken."
-            
-    except Exception as e:
-        st.session_state.ki_antwort = "Ich überlege noch. Bitte frag mich gleich nochmal!"
+    st.session_state.ki_antwort = frage_ki(sprach_input)
+
 # Das HTML-System für den Browser
 html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
