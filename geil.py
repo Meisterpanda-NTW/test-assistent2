@@ -201,9 +201,11 @@ if (!Recognition) {
         antwortBox.style.color = textFarbe;
         antwortBox.style.display = "block";
     }
-       btn.addEventListener('click', () => {
+    btn.addEventListener('click', () => {
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
         try { rec.start(); } catch(e) {}
+        
+        // Der Status prüft jetzt unlöschbar den Browser-Sitzungsspeicher
         if (sessionStorage.getItem("garminWach") === "true") {
             status.innerText = "🔊 Garmin ist wach! Sag mir einfach, was du willst.";
         } else {
@@ -214,7 +216,6 @@ if (!Recognition) {
     });
     
     rec.onresult = (e) => {
-        // ULTIMATIVE KORREKTUR: Greift absolut präzise auf den Text-Index zu!
         const gehoert = e.results[0][0].transcript; 
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
@@ -224,11 +225,13 @@ if (!Recognition) {
         let textFarbe = "#333";
         let istMusik = false;
 
+        // Prüft den unlöschbaren Sitzungsspeicher statt einer flüchtigen Variable
         const istSchonWach = sessionStorage.getItem("garminWach") === "true";
         const hatAufgeweckt = gehoertLower.includes("okay garmin") || gehoertLower.includes("ok garmin") || gehoertLower.includes("okay gar");
 
         if (istSchonWach || hatAufgeweckt) {
             if (hatAufgeweckt) {
+                // Aktiviert die Flagge unlöschbar im Browser-Speicher
                 sessionStorage.setItem("garminWach", "true");
             }
             machPiep(); 
@@ -288,11 +291,10 @@ if (!Recognition) {
             } else if (gehoertLower.includes("beenden") || gehoertLower.includes("stopp") || gehoertLower.includes("schlafen")) {
                 antwortText = "Garmin geht schlafen.";
                 boxFarbe = "#d1ecf1";
-                sessionStorage.setItem("garminWach", "false"); 
+                sessionStorage.setItem("garminWach", "false"); // Setzt den Zustand zurück
                 audioPlayer.pause(); 
                 rec.stop();
             } else if (befehlRein.length > 0) {
-                // UNBLOCKIERBARER INPUT-WEG: Schreibt den Text virtuell in das unsichtbare Streamlit-Feld
                 status.innerText = "🤖 Garmin überlegt...";
                 const inputs = window.parent.document.getElementsByTagName('input');
                 if (inputs.length > 0) {
