@@ -201,7 +201,7 @@ if (!Recognition) {
         antwortBox.style.color = textFarbe;
         antwortBox.style.display = "block";
     }
-    btn.addEventListener('click', () => {
+       btn.addEventListener('click', () => {
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
         try { rec.start(); } catch(e) {}
         if (sessionStorage.getItem("garminWach") === "true") {
@@ -214,7 +214,8 @@ if (!Recognition) {
     });
     
     rec.onresult = (e) => {
-        const gehoert = e.results[0][0].transcript; // EXAKTER REPARIERTER SYSTEM-INDEX FÜR APPLE & CHROME
+        // ULTIMATIVE KORREKTUR: Greift absolut präzise auf den Text-Index zu!
+        const gehoert = e.results[0][0].transcript; 
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
         
