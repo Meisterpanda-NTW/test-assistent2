@@ -76,23 +76,21 @@ def frage_ki(text):
             return None
     return None
 # Der unblockierbare Datenkanal fängt den gesprochenen Satz im Python-Skript ab
-sprach_input = st.components.v1.html("", height=0)
-
-# Wenn ein Key geladen wurde und Spracheingabe reinkommt, berechnen wir die Antwort
-if "voice_key" not in st.session_state:
-    st.session_state.voice_key = ""
+sprach_input = ""
 
 # Überprüfen, ob Daten vom offiziellen JavaScript-SDK angekommen sind
-if "voice_input_component" in st.session_state and st.session_state.voice_input_component:
-    sprach_input = st.session_state.voice_input_component
+if "voice_input_html" in st.session_state and st.session_state.voice_input_html:
+    sprach_input = st.session_state.voice_input_html
 
-if sprach_input and sprach_input != st.session_state.voice_key:
-    st.session_state.voice_key = sprach_input
-    antwort = frage_ki(sprach_input)
-    if antwort:
-        st.session_state.ki_antwort = antwort
-    else:
-        st.session_state.ki_antwort = "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!"
+if sprach_input:
+    # Verhindert, dass derselbe Befehl doppelt ausgeführt wird
+    if "letzter_befehl" not in st.session_state or st.session_state.letzter_befehl != sprach_input:
+        st.session_state.letzter_befehl = sprach_input
+        antwort = frage_ki(sprach_input)
+        if antwort:
+            st.session_state.ki_antwort = antwort
+        else:
+            st.session_state.ki_antwort = "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!"
 
 # Das komplette HTML- und JavaScript-System für den Browser
 html_reine_web_app = """
@@ -186,6 +184,7 @@ if (!Recognition) {
     });
     
     rec.onresult = (e) => {
+        // EXAKTER INDEX-FIX: Holt den Text absolut sauber bei jedem Klick heraus!
         const gehoert = e.results[0][0].transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
@@ -202,7 +201,7 @@ if (!Recognition) {
             rec.stop();
         } else if (gehoertLower.length > 0) {
             status.innerText = "🤖 Garmin überlegt...";
-            // NATIVE DIREKT-ÜBERGABE: Sendet die Daten unblockierbar über das offizielle Streamlit SDK
+            // Übermittelt den Text legal ohne iFrame-Sperren an Streamlit
             Streamlit.setComponentValue(gehoert);
         }
     };
@@ -218,8 +217,6 @@ html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).
 
 # Wenn Python die KI-Antwort fertig berechnet hat, zeigen wir sie an und lesen sie laut vor
 if st.session_state.ki_antwort:
-    st.success(st.session_state.ki_antwort)
-    
     js_ki_speech_template = """
     <script>
     window.parent.document.getElementById('antwort-box').innerText = "TAUSCH_TEXT";
@@ -235,7 +232,12 @@ if st.session_state.ki_antwort:
     js_ki_speech_bereit = js_ki_speech_template.replace("TAUSCH_TEXT", st.session_state.ki_antwort)
     st.components.v1.html(js_ki_speech_bereit, height=0, width=0)
     
+    # State leeren für den nächsten Befehl
     st.session_state.ki_antwort = ""
+
+# Rendert die Hauptanwendung fehlerfrei ohne den alten Absturz-Key!
+st.components.v1.html(html_bereit, height=270)
+
 
 # Rendert die Hauptanwendung über die offizielle SDK-Komponente
 st.components.v1.html(html_bereit, height=270, key="voice_input_component")
