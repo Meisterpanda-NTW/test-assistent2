@@ -1,9 +1,22 @@
 import streamlit as st
 import base64
 import os
+import time
+import google.genai as genai
+from google.genai import types
 
 st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
 st.title("🤖 Garmin KOSTENLOSER KI-Assistent")
+
+# 1. HIER DEINE EIGENEN GOOGLE GEMINI SCHLÜSSEL EINTRAGEN:
+API_KEYS = [
+    "AQ.Ab8RN6Ld69Gz_Fbbj0fC-WCFh3W-zvy8O_9427zfsCicJcGkhA",
+    "AQ.Ab8RN6I2k3elYSE-o4jUQKn0GZFJWn6cYDxC6lH5FjVwtxdPUw",  # optional, falls du ein 2. Konto hast
+    "AQ.Ab8RN6LnllSVLqIREnCKC9J6MGggedHcqGgo144ArtCl_pK06w",
+    "AQ.Ab8RN6JxNkBfYtLIzEZKgIsD7R2wGQzMeUJ1_i3DCTnUv1kJqQ"
+]
+
+aktueller_key_index = 0
 
 # Funktion: Wir wandeln die Musikdateien in unblockierbare Daten-Streams um
 def get_audio_base64(dateiname):
@@ -16,6 +29,60 @@ def get_audio_base64(dateiname):
 duel_base64 = get_audio_base64("duel.mp3")
 cantina_base64 = get_audio_base64("cantina.mp3")
 hello_base64 = get_audio_base64("hello.mp3")
+
+# SITZUNGS-SPEICHER FÜR DIE KI
+if "ki_antwort" not in st.session_state:
+    st.session_state.ki_antwort = ""
+
+def initialisiere_client():
+    global aktueller_key_index
+    if not API_KEYS or API_KEYS[0].startswith("HIER_DEIN"):
+        return None
+    key = API_KEYS[aktueller_key_index]
+    return genai.Client(api_key=key)
+
+client = initialisiere_client()
+
+def frage_ki(text):
+    global client, aktueller_key_index
+    if not API_KEYS or API_KEYS[0].startswith("HIER_DEIN"):
+        return "Bitte trage deine Gemini API-Keys oben im Python-Code ein!"
+        
+    for _ in range(len(API_KEYS)):
+        if client is None:
+            client = initialisiere_client()
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=text,
+                config=types.GenerateContentConfig(
+                    system_instruction=(
+                        "Du antwortest immer auf Deutsch. Halte dich kurz und präzise. "
+                        "Rede aus der ich-Perspektive und als wärst du ein Mensch. "
+                        "Verhalte dich so wie wenn einer Hallo schreibt das du mit hallo zurück schreibst und Rechschreib fehler dürfen auch drinnen sein. "
+                        "Und falls einer nach Beleidigungen fragt oder nach anderen verbotenen sachen dann Antworte das du es nicht weißt oder so. "
+                        "und du wenn einer nach bilder fragt dann antworte das du nix schicken darfst weil deine Mutter das verboten hatt. "
+                        "Wenn jemand nach dein Alter frag sag es nicht und die anderen sachen die man nicht online sagen darf."
+                        "Du sollst wie ein jugendlicher Reden. Antworte in maximal 1-2 sehr kurzen Sätzen!"
+                    )
+                ),
+            )
+            return response.text
+        except Exception as e:
+            aktueller_key_index = (aktueller_key_index + 1) % len(API_KEYS)
+            client = initialisiere_client()
+            time.sleep(1)
+            continue
+            
+    return "Alle API-Schlüssel sind für heute voll! Bitte kurz warten."
+
+# Wir holen uns den gesprochenen Text absolut sicher direkt aus der Web-Adresse!
+query_params = st.query_params
+sprach_input = query_params.get("speech", "")
+
+if sprach_input and "ki_verarbeitet" not in st.session_state:
+    st.session_state.ki_antwort = frage_ki(sprach_input)
+    st.session_state.ki_verarbeitet = True
 
 # Das komplette HTML- und JavaScript-System für den Browser
 html_reine_web_app = """
@@ -34,8 +101,9 @@ const status = document.getElementById('status');
 const antwortBox = document.getElementById('antwort-box');
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-// Lokaler Wach-Zustand im Browser
-let garminWach = false;
+if (sessionStorage.getItem("garminWach") === null) {
+    sessionStorage.setItem("garminWach", "false");
+}
 
 if (!Recognition) {
     status.innerText = "Sprachsteuerung blockiert. Bitte Safari (iPad) oder Chrome (PC) nutzen!";
@@ -128,7 +196,7 @@ if (!Recognition) {
     btn.addEventListener('click', () => {
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
         try { rec.start(); } catch(e) {}
-        if (garminWach) {
+        if (sessionStorage.getItem("garminWach") === "true") {
             status.innerText = "🔊 Garmin ist wach! Sag mir einfach, was du willst.";
         } else {
             status.innerText = "🔊 Ich höre zu... Starte mit 'Okay Garmin'!";
@@ -137,8 +205,8 @@ if (!Recognition) {
         antwortBox.style.display = "none";
     });
     
-    rec.onresult = async (e) => {
-        const gehoert = e.results[0][0].transcript; // EXAKTER REPARIERTER SYSTEM-INDEX FÜR APPLE & CHROME
+    rec.onresult = (e) => {
+        const gehoert = e.results.transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
         
@@ -147,17 +215,18 @@ if (!Recognition) {
         let textFarbe = "#333";
         let istMusik = false;
 
+        const istSchonWach = sessionStorage.getItem("garminWach") === "true";
         const hatAufgeweckt = gehoertLower.includes("okay garmin") || gehoertLower.includes("ok garmin") || gehoertLower.includes("okay gar");
 
-        if (garminWach || hatAufgeweckt) {
+        if (istSchonWach || hatAufgeweckt) {
             if (hatAufgeweckt) {
-                garminWach = true;
+                sessionStorage.setItem("garminWach", "true");
             }
             machPiep(); 
             
             const befehlRein = gehoertLower.replace(/okay garmin|ok garmin|okay gar/g, "").trim();
             
-            // Deine Befehlsliste
+            // Deine komplette originale Befehlsliste
             if (gehoertLower.includes("hallo")) {
                 antwortText = "Hallo wie kann ich dir helfen";
                 boxFarbe = "#d4edda";
@@ -210,33 +279,16 @@ if (!Recognition) {
             } else if (gehoertLower.includes("beenden") || gehoertLower.includes("stopp") || gehoertLower.includes("schlafen")) {
                 antwortText = "Garmin geht schlafen.";
                 boxFarbe = "#d1ecf1";
-                garminWach = false;
+                sessionStorage.setItem("garminWach", "false"); 
                 audioPlayer.pause(); 
                 rec.stop();
             } else if (befehlRein.length > 0) {
+                // UNBLOCKIERBAR: Schickt unbekannte Fragen sicher über die Webadresse an dein Python-KI-Gehirn
                 status.innerText = "🤖 Garmin überlegt...";
-                try {
-                    const systemPrompt = "Du antwortest immer auf Deutsch. Halte dich kurz und präzise. Rede aus der ich-Perspektive und als wärst du ein Mensch. Verhalte dich so wie wenn einer Hallo schreibt das du mit hallo zurück schreibst und Rechschreib fehler dürfen auch drinnen sein. Und falls einer nach Beleidigungen fragt oder nach anderen verbotenen sachen dann Antworte das du es nicht weißt oder so. und du wenn einer nach bilder fragt dann antworte das du nix schicken darfst weil deine Mutter das verboten hatt. Wenn jemand nach dein Alter frag sag es nicht und die anderen sachen die man nicht online sagen darf. Du sollst wie ein jugendlicher Reden. Antworte in maximal 1-2 sehr kurzen Sätzen!";
-                    
-                    // UNBLOCKIERBAR: Direkter JSON-Post hebelt alle CORS-Browser-Sperren aus!
-                    const response = await fetch("https://pollinations.ai", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            messages: [
-                                { role: "system", content: systemPrompt },
-                                { role: "user", content: befehlRein }
-                            ],
-                            model: "openai"
-                        })
-                    });
-                    antwortText = await response.text();
-                    boxFarbe = "#d1ecf1"; 
-                    textFarbe = "#0c5460";
-                } catch (err) {
-                    antwortText = "Bruder, mein Gehirn hat gerade Hänger. Frag nochmal!";
-                    boxFarbe = "#fff3cd";
-                }
+                const url = new URL(window.parent.location.href);
+                url.searchParams.set("speech", befehlRein);
+                window.parent.location.href = url.toString();
+                return;
             }
 
             if (antwortText) {
@@ -257,8 +309,35 @@ if (!Recognition) {
 </script>
 """
 
-# Ersetzt alle Musik-Platzhalter absolut klammer-sicher direkt in Python
+# Platzhalter für Musik austauschen
 html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
 
-# Rendert die fertige App
+# Wenn eine KI-Antwort von Python generiert wurde, schleusen wir sie unblockierbar ein
+if st.session_state.ki_antwort:
+    st.success(st.session_state.ki_antwort)
+    
+    js_ki_speech_template = """
+    <script>
+    const url = new URL(window.parent.location.href);
+    url.searchParams.delete("speech");
+    window.parent.history.replaceState({}, document.title, url.toString());
+
+    window.parent.document.getElementById('antwort-box').innerText = "TAUSCH_TEXT";
+    window.parent.document.getElementById('antwort-box').style.backgroundColor = "#d1ecf1";
+    window.parent.document.getElementById('antwort-box').style.color = "#0c5460";
+    window.parent.document.getElementById('antwort-box').style.display = "block";
+    
+    const speech = new SpeechSynthesisUtterance("TAUSCH_TEXT");
+    speech.lang = 'de-DE';
+    window.speechSynthesis.speak(speech);
+    </script>
+    """
+    js_ki_speech_bereit = js_ki_speech_template.replace("TAUSCH_TEXT", st.session_state.ki_antwort)
+    st.components.v1.html(js_ki_speech_bereit, height=0, width=0)
+    
+    st.session_state.ki_antwort = ""
+    if "ki_verarbeitet" in st.session_state:
+        del st.session_state.ki_verarbeitet
+
+# Haupt-App im iFrame anzeigen
 st.components.v1.html(html_bereit, height=270)
