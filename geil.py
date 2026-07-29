@@ -8,17 +8,10 @@ from google.genai import types
 st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
 st.title("🤖 Garmin KOSTENLOSER KI-Assistent")
 
-# 1. HIER DEINE EIGENEN GOOGLE GEMINI SCHLÜSSEL EINTRAGEN:
-API_KEYS = [
-    "AQ.Ab8RN6Ld69Gz_Fbbj0fC-WCFh3W-zvy8O_9427zfsCicJcGkhA",
-    "AQ.Ab8RN6I2k3elYSE-o4jUQKn0GZFJWn6cYDxC6lH5FjVwtxdPUw",  # optional, falls du ein 2. Konto hast
-    "AQ.Ab8RN6LnllSVLqIREnCKC9J6MGggedHcqGgo144ArtCl_pK06w",
-    "AQ.Ab8RN6JxNkBfYtLIzEZKgIsD7R2wGQzMeUJ1_i3DCTnUv1kJqQ"
-]
-
+# HIER DEINE GEMINI SCHLÜSSEL EINTRAGEN:
+API_KEYS = ["HIER_DEIN_ERSTER_GEMINI_KEY", "HIER_DEIN_ZWEITER_GEMINI_KEY"]
 aktueller_key_index = 0
 
-# Funktion: Wir wandeln die Musikdateien in unblockierbare Daten-Streams um
 def get_audio_base64(dateiname):
     if os.path.exists(dateiname):
         with open(dateiname, "rb") as f:
@@ -30,7 +23,6 @@ duel_base64 = get_audio_base64("duel.mp3")
 cantina_base64 = get_audio_base64("cantina.mp3")
 hello_base64 = get_audio_base64("hello.mp3")
 
-# SITZUNGS-SPEICHER FÜR DIE KI
 if "ki_antwort" not in st.session_state:
     st.session_state.ki_antwort = ""
 
@@ -38,8 +30,7 @@ def initialisiere_client():
     global aktueller_key_index
     if not API_KEYS or API_KEYS[0].startswith("HIER_DEIN"):
         return None
-    key = API_KEYS[aktueller_key_index]
-    return genai.Client(api_key=key)
+    return genai.Client(api_key=API_KEYS[aktueller_key_index])
 
 client = initialisiere_client()
 
@@ -47,7 +38,6 @@ def frage_ki(text):
     global client, aktueller_key_index
     if not API_KEYS or API_KEYS[0].startswith("HIER_DEIN"):
         return "Bitte trage deine Gemini API-Keys oben im Python-Code ein!"
-        
     for _ in range(len(API_KEYS)):
         if client is None:
             client = initialisiere_client()
@@ -73,18 +63,29 @@ def frage_ki(text):
             client = initialisiere_client()
             time.sleep(1)
             continue
-            
     return "Alle API-Schlüssel sind für heute voll! Bitte kurz warten."
 
-# Wir holen uns den gesprochenen Text absolut sicher direkt aus der Web-Adresse!
-query_params = st.query_params
-sprach_input = query_params.get("speech", "")
+# CSS zum kompletten Verstecken des Textfeldes
+st.markdown("""
+    <style>
+    div[data-testid="stTextInput"] {
+        position: absolute;
+        top: -500px;
+        left: -500px;
+        opacity: 0;
+        height: 0;
+        width: 0;
+        overflow: hidden;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-if sprach_input and "ki_verarbeitet" not in st.session_state:
+# Das unsichtbare Textfeld fängt das gesprochene Wort ab
+sprach_input = st.text_input("Schnittstelle", key="hidden_voice_input", label_visibility="collapsed")
+
+if sprach_input:
     st.session_state.ki_antwort = frage_ki(sprach_input)
-    st.session_state.ki_verarbeitet = True
-
-# Das komplette HTML- und JavaScript-System für den Browser
+# Das komplette HTML- und JavaScript-System für den Browser (Teil 2A)
 html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
     <button id="mic-btn" style="background-color: #ff4b4b; color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 260px; transition: 0.3s; font-family: sans-serif;">
@@ -101,6 +102,7 @@ const status = document.getElementById('status');
 const antwortBox = document.getElementById('antwort-box');
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+// Lokale Variable merkt sich im Browser-Sitzungsspeicher den Wach-Zustand dauerhaft
 if (sessionStorage.getItem("garminWach") === null) {
     sessionStorage.setItem("garminWach", "false");
 }
@@ -206,7 +208,7 @@ if (!Recognition) {
     });
     
     rec.onresult = (e) => {
-        const gehoert = e.results.transcript;
+        const gehoert = e.results[0][0].transcript; // EXAKTER REPARIERTER SYSTEM-INDEX FÜR APPLE & CHROME
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
         
@@ -283,11 +285,19 @@ if (!Recognition) {
                 audioPlayer.pause(); 
                 rec.stop();
             } else if (befehlRein.length > 0) {
-                // UNBLOCKIERBAR: Schickt unbekannte Fragen sicher über die Webadresse an dein Python-KI-Gehirn
+                // UNBLOCKIERBARER INPUT-WEG: Schreibt den Text virtuell in das unsichtbare Streamlit-Feld
                 status.innerText = "🤖 Garmin überlegt...";
-                const url = new URL(window.parent.location.href);
-                url.searchParams.set("speech", befehlRein);
-                window.parent.location.href = url.toString();
+                const inputs = window.parent.document.getElementsByTagName('input');
+                if (inputs.length > 0) {
+                    inputs[0].value = befehlRein;
+                    inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
+                    inputs[0].dispatchEvent(new Event('change', { bubbles: true }));
+                    
+                    setTimeout(() => {
+                        const form = inputs[0].form;
+                        if (form) form.requestSubmit();
+                    }, 50);
+                }
                 return;
             }
 
@@ -318,10 +328,6 @@ if st.session_state.ki_antwort:
     
     js_ki_speech_template = """
     <script>
-    const url = new URL(window.parent.location.href);
-    url.searchParams.delete("speech");
-    window.parent.history.replaceState({}, document.title, url.toString());
-
     window.parent.document.getElementById('antwort-box').innerText = "TAUSCH_TEXT";
     window.parent.document.getElementById('antwort-box').style.backgroundColor = "#d1ecf1";
     window.parent.document.getElementById('antwort-box').style.color = "#0c5460";
@@ -334,10 +340,7 @@ if st.session_state.ki_antwort:
     """
     js_ki_speech_bereit = js_ki_speech_template.replace("TAUSCH_TEXT", st.session_state.ki_antwort)
     st.components.v1.html(js_ki_speech_bereit, height=0, width=0)
-    
     st.session_state.ki_antwort = ""
-    if "ki_verarbeitet" in st.session_state:
-        del st.session_state.ki_verarbeitet
 
 # Haupt-App im iFrame anzeigen
 st.components.v1.html(html_bereit, height=270)
