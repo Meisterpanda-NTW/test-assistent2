@@ -2,19 +2,16 @@ import streamlit as st
 import base64
 import os
 import time
+import json
 import google.genai as genai
 from google.genai import types
+import google.genai.errors
 
 st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
 st.title("🤖 Garmin REINER KI-ASSISTENT")
 
-# HIER DEINE EIGENEN GOOGLE GEMINI SCHLÜSSEL EINTRAGEN:
-API_KEYS = [
-    "AQ.Ab8RN6Ld69Gz_Fbbj0fC-WCFh3W-zvy8O_9427zfsCicJcGkhA",
-    "AQ.Ab8RN6I2k3elYSE-o4jUQKn0GZFJWn6cYDxC6lH5FjVwtxdPUw",  # optional, falls du ein 2. Konto hast
-    "AQ.Ab8RN6LnllSVLqIREnCKC9J6MGggedHcqGgo144ArtCl_pK06w",
-    "AQ.Ab8RN6JxNkBfYtLIzEZKgIsD7R2wGQzMeUJ1_i3DCTnUv1kJqQ"
-]
+# HIER DEINE LOKALEN MINECRAFT GEMINI SCHLÜSSEL EINTRAGEN:
+API_KEYS = ["HIER_DEIN_ERSTER_GEMINI_KEY", "HIER_DEIN_ZWEITER_GEMINI_KEY"]
 aktueller_key_index = 0
 
 def get_audio_base64(dateiname):
@@ -31,27 +28,31 @@ hello_base64 = get_audio_base64("hello.mp3")
 if "ki_antwort" not in st.session_state:
     st.session_state.ki_antwort = ""
 
+# DEIN ORIGINALER MINECRAFT INITIALISIERUNGS-CODE
 def initialisiere_client():
     global aktueller_key_index
-    if not API_KEYS or API_KEYS[0].startswith("HIER_DEIN"):
+    if not API_KEYS or API_KEYS[0].startswith(API_KEYS = [
+    "AQ.Ab8RN6Ld69Gz_Fbbj0fC-WCFh3W-zvy8O_9427zfsCicJcGkhA",
+    "AQ.Ab8RN6I2k3elYSE-o4jUQKn0GZFJWn6cYDxC6lH5FjVwtxdPUw",  # optional, falls du ein 2. Konto hast
+    "AQ.Ab8RN6LnllSVLqIREnCKC9J6MGggedHcqGgo144ArtCl_pK06w",
+    "AQ.Ab8RN6JxNkBfYtLIzEZKgIsD7R2wGQzMeUJ1_i3DCTnUv1kJqQ"
+]):
         return None
-    return genai.Client(api_key=API_KEYS[aktueller_key_index])
+    key = API_KEYS[aktueller_key_index]
+    print(f"[INFO] Aktiver Key-Index: {aktueller_key_index} ({key[:8]}...)")
+    return genai.Client(api_key=key)
 
 client = initialisiere_client()
 
+# DEINE ORIGINALE MINECRAFT KI-LOGIK (Inklusive exakter Fehlermeldungen)
 def frage_ki(text):
     global client, aktueller_key_index
-    if not API_KEYS or API_KEYS[0].startswith("HIER_DEIN"):
-        return "Bitte trage deine Gemini API-Keys oben im Python-Code ein!"
-        
-    # Wir zählen mit, wie viele Keys wir in diesem Versuch schon probiert haben
-    versuchte_keys = 0
-    anzahl_keys = len(API_KEYS)
     
-    while versuchte_keys < anzahl_keys:
+    for _ in range(len(API_KEYS)):
         if client is None:
-            client = initialisiere_client()
+            return None
         try:
+            # Wichtig: Nutzt hier gemini-2.5-flash, da gemini-3.5-flash oft API-Fehler wirft
             response = client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=text,
@@ -63,33 +64,43 @@ def frage_ki(text):
                         "Und falls einer nach Beleidigungen fragt oder nach anderen verbotenen sachen dann Antworte das du es nicht weißt oder so. "
                         "und du wenn einer nach bilder fragt dann antworte das du nix schicken darfst weil deine Mutter das verboten hatt. "
                         "Wenn jemand nach dein Alter frag sag es nicht und die anderen sachen die man nicht online sagen darf."
-                        "Du sollst wie ein jugendlicher Reden. Antworte in maximal 1-2 kurzen Sätzen!"
+                        "Du sollst wie ein Jugendlicher Reden. Antworte in maximal 1-2 kurzen Sätzen!"
                     )
                 ),
             )
             return response.text
+        except google.genai.errors.ClientError as e:
+            if e.code == 429:  # Limit erreicht
+                aktueller_key_index = (aktueller_key_index + 1) % len(API_KEYS)
+                print(f"\\n[LIMIT] Key aufgebraucht! Wechsle zu Index: {aktueller_key_index}")
+                client = initialisiere_client()
+                time.sleep(1)
+                continue
+            else:
+                print(f"[API-FEHLER] {e}")
+                return None
         except Exception as e:
-            # Wenn ein Key abklingt oder fehlschlägt, zählen wir einen Versuch hoch
-            versuchte_keys += 1
-            # Wechsle sofort zum nächsten Schlüssel in der Liste
-            aktueller_key_index = (aktueller_key_index + 1) % anzahl_keys
-            client = initialisiere_client()
-            time.sleep(0.5)
-            continue
+            print(f"[FEHLER] Allgemeiner Fehler: {e}")
+            return None
             
-    # Wenn die Schleife durchläuft und ALLE Schlüssel getestet wurden:
-    return "Bruder, alle meine Gehirnzellen sind für heute gegrillt, geht grad gar nix mehr!"
+    print("\\n[WARNUNG] ALLE API-Schlüssel sind für heute voll! Warte 5 Minuten...")
+    return None
 
-# Das unblockierbare native Streamlit-Formular (unsichtbar im Hintergrund)
+# Das native Streamlit-Formular fängt das gesprochene Wort vom iPad ab
 with st.form(key="hidden_form", clear_on_submit=True):
     sprach_input = st.text_input("Schnittstelle", label_visibility="collapsed")
     submit_button = st.form_submit_button("Senden")
 
-# Wenn der Button im HTML-Formular geklickt wird, rechnet Python die KI-Antwort aus
+# Triggert dein Minecraft-Gehirn und prüft, ob Schlüssel frei sind
 if submit_button and sprach_input:
-    st.session_state.ki_antwort = frage_ki(sprach_input)
+    antwort = frage_ki(sprach_input)
+    if antwort:
+        st.session_state.ki_antwort = antwort
+    else:
+        # HIER DEINE GEWÜNSCHTE ABSAGE: Wenn antwort None ist (alle Keys voll/Fehler), spricht er diesen Text
+        st.session_state.ki_antwort = "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!"
 
-# CSS, um das hässliche Streamlit-Formular komplett unsichtbar zu machen
+# CSS zum Verstecken des Formulars
 st.markdown("""
     <style>
     div[data-testid="stForm"] {
@@ -103,7 +114,6 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
-
 # Das komplette HTML- und JavaScript-System für den Browser (Teil 2B)
 html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
@@ -194,7 +204,7 @@ if (!Recognition) {
     });
     
     rec.onresult = (e) => {
-        const gehoert = e.results[0][0].transcript; // DER FIX: Greift absolut präzise auf den Sprach-Index zu!
+        const gehoert = e.results[0][0].transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
         machPiep();
@@ -211,17 +221,14 @@ if (!Recognition) {
         } else if (gehoertLower.length > 0) {
             status.innerText = "🤖 Garmin überlegt...";
             
-            // UNBLOCKIERBAR: Wir greifen auf das versteckte Textfeld im Streamlit-Hauptfenster zu
             const inputs = window.parent.document.getElementsByTagName('input');
             if (inputs.length > 0) {
                 const targetInput = inputs[0];
                 targetInput.value = gehoert;
                 
-                // Triggert die Events, damit Streamlit merkt, dass Text drinsteht
                 targetInput.dispatchEvent(new Event('input', { bubbles: true }));
                 targetInput.dispatchEvent(new Event('change', { bubbles: true }));
                 
-                // Löst das Absenden des nativen Formulars ohne iFrame-Sperren aus
                 setTimeout(() => {
                     const form = targetInput.form;
                     if (form) {
@@ -260,7 +267,6 @@ if st.session_state.ki_antwort:
     js_ki_speech_bereit = js_ki_speech_template.replace("TAUSCH_TEXT", st.session_state.ki_antwort)
     st.components.v1.html(js_ki_speech_bereit, height=0, width=0)
     
-    # State leeren für den nächsten Befehl
     st.session_state.ki_antwort = ""
 
 st.components.v1.html(html_bereit, height=270)
