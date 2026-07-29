@@ -2,6 +2,9 @@ import streamlit as st
 import base64
 import os
 import time
+import google.genai as genai  # HIER REPARIERT: Lädt genai so, wie der Client es braucht!
+from google.genai import types
+import google.genai.errors
 
 st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
 st.title("🤖 Garmin KOSTENLOSER KI-Assistent")
