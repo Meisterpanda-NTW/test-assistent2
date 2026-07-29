@@ -262,7 +262,6 @@ if (!Recognition) {
 }
 </script>
 """
-
 # Ersetzt alle Musik-Platzhalter absolut crashsicher direkt in Python
 html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
 
@@ -283,9 +282,10 @@ if st.session_state.ki_antwort:
     </script>
     """
     js_ki_speech_bereit = js_ki_speech_template.replace("TAUSCH_TEXT", st.session_state.ki_antwort)
-    # Ausgabetunnel ohne key-Argument, damit hier kein Fehler entstehen kann
-    st.components.v1.html(js_ki_speech_bereit, height=0, width=0)
+    # UNBLOCKIERBAR FÜR PYTHON 3.14: Nutzt die moderne st.html Funktion ohne Absturz-Gefahr!
+    st.html(js_ki_speech_bereit)
     st.session_state.ki_antwort = ""
 
-# HIER REPARIERT: Ein absolut fehlerfreier, kurzer String-Key, der den Datentunnel öffnet!
-st.components.v1.html(html_bereit, height=270, key="mic")
+# HAUPT-APP: Rendern mit der modernen, sicheren st.html Funktion
+st.html(html_bereit)
+
