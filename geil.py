@@ -283,9 +283,9 @@ if st.session_state.ki_antwort:
     </script>
     """
     js_ki_speech_bereit = js_ki_speech_template.replace("TAUSCH_TEXT", st.session_state.ki_antwort)
-    # HIER GERETTET: key= komplett entfernt!
+    # Ausgabetunnel ohne key-Argument, damit hier kein Fehler entstehen kann
     st.components.v1.html(js_ki_speech_bereit, height=0, width=0)
     st.session_state.ki_antwort = ""
 
-# HIER GERETTET: key= komplett entfernt für die Haupt-App!
-st.components.v1.html(html_bereit, height=270)
+# HIER REPARIERT: Ein absolut fehlerfreier, kurzer String-Key, der den Datentunnel öffnet!
+st.components.v1.html(html_bereit, height=270, key="mic")
