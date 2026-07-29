@@ -90,18 +90,6 @@ sprach_input = query_params.get("speech", "")
 if sprach_input and "ki_verarbeitet" not in st.session_state:
     st.session_state.ki_antwort = frage_ki(sprach_input)
     st.session_state.ki_verarbeitet = True
-
-# Funktion: Wir wandeln die Musikdateien in unblockierbare Daten-Streams um
-def get_audio_base64(dateiname):
-    if os.path.exists(dateiname):
-        with open(dateiname, "rb") as f:
-            data = f.read()
-            return base64.b64encode(data).decode()
-    return ""
-
-duel_base64 = get_audio_base64("duel.mp3")
-cantina_base64 = get_audio_base64("cantina.mp3")
-hello_base64 = get_audio_base64("hello.mp3")
 # Das komplette HTML- und JavaScript-System für den Browser (Teil A)
 html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
@@ -119,8 +107,9 @@ const status = document.getElementById('status');
 const antwortBox = document.getElementById('antwort-box');
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-// Lokale Variable merkt sich im Browser den Wach-Zustand
-let garminWach = false;
+if (sessionStorage.getItem("garminWach") === null) {
+    sessionStorage.setItem("garminWach", "false");
+}
 
 if (!Recognition) {
     status.innerText = "Sprachsteuerung blockiert. Bitte Safari (iPad) oder Chrome (PC) nutzen!";
@@ -213,8 +202,8 @@ if (!Recognition) {
     btn.addEventListener('click', () => {
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
         try { rec.start(); } catch(e) {}
-        if (garminWach) {
-            status.innerText = "🔊 Garmin ist wach! Sag mir einfach was du willst.";
+        if (sessionStorage.getItem("garminWach") === "true") {
+            status.innerText = "🔊 Garmin ist wach! Sag mir einfach, was du willst.";
         } else {
             status.innerText = "🔊 Ich höre zu... Starte mit 'Okay Garmin'!";
         }
@@ -222,7 +211,7 @@ if (!Recognition) {
         antwortBox.style.display = "none";
     });
     
-    rec.onresult = async (e) => {
+    rec.onresult = (e) => {
         const gehoert = e.results[0][0].transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
@@ -232,17 +221,18 @@ if (!Recognition) {
         let textFarbe = "#333";
         let istMusik = false;
 
+        const istSchonWach = sessionStorage.getItem("garminWach") === "true";
         const hatAufgeweckt = gehoertLower.includes("okay garmin") || gehoertLower.includes("ok garmin") || gehoertLower.includes("okay gar");
 
-        if (garminWach || hatAufgeweckt) {
+        if (istSchonWach || hatAufgeweckt) {
             if (hatAufgeweckt) {
-                garminWach = true;
+                sessionStorage.setItem("garminWach", "true");
             }
             machPiep(); 
             
             const befehlRein = gehoertLower.replace(/okay garmin|ok garmin|okay gar/g, "").trim();
             
-            // Deine Befehlsliste
+            // Lokale Befehlsliste
             if (gehoertLower.includes("hallo")) {
                 antwortText = "Hallo wie kann ich dir helfen";
                 boxFarbe = "#d4edda";
@@ -295,29 +285,15 @@ if (!Recognition) {
             } else if (gehoertLower.includes("beenden") || gehoertLower.includes("stopp") || gehoertLower.includes("schlafen")) {
                 antwortText = "Garmin geht schlafen.";
                 boxFarbe = "#d1ecf1";
-                garminWach = false;
+                sessionStorage.setItem("garminWach", "false"); 
                 audioPlayer.pause(); 
                 rec.stop();
             } else if (befehlRein.length > 0) {
                 status.innerText = "🤖 Garmin überlegt...";
-                try {
-                    const systemPrompt = "Du antwortest immer auf Deutsch. Halte dich kurz und präzise. Rede aus der ich-Perspektive und als wärst du ein Mensch. Verhalte dich so wie wenn einer Hallo schreibt das du mit hallo zurück schreibst und Rechschreib fehler dürfen auch drinnen sein. Und falls einer nach Beleidigungen fragt oder nach anderen verbotenen sachen dann Antworte das du es nicht weißt oder so. und du wenn einer nach bilder fragt dann antworte das du nix schicken darfst weil deine Mutter das verboten hatt. Wenn jemand nach dein Alter frag sag es nicht und die anderen sachen die man nicht online sagen darf. Du sollst wie ein jugendlicher Reden. Antworte in maximal 1-2 sehr kurzen Sätzen!";
-                    
-                    const response = await fetch("https://googleapis.com", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            contents: [{ parts: [{ text: systemPrompt + " Frage: " + befehlRein }] }]
-                        })
-                    });
-                    const data = await response.json();
-                    antwortText = data.candidates[0].content.parts[0].text;
-                    boxFarbe = "#d1ecf1"; 
-                    textFarbe = "#0c5460";
-                } catch (err) {
-                    antwortText = "Bruder, mein Gehirn hat gerade Hänger. Frag nochmal!";
-                    boxFarbe = "#fff3cd";
-                }
+                const url = new URL(window.parent.location.href);
+                url.searchParams.set("speech", befehlRein);
+                window.parent.location.href = url.toString();
+                return;
             }
 
             if (antwortText) {
@@ -338,9 +314,35 @@ if (!Recognition) {
 </script>
 """
 
+# Platzhalter für Musik austauschen
+html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
 
-html_bereit = html_reine_web_app.replace("PLATZHALTER_API_KEY", API_KEYS[0]).replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
+# Wenn eine KI-Antwort von Python generiert wurde, schleusen wir sie unblockierbar ein
+if st.session_state.ki_antwort:
+    st.success(st.session_state.ki_antwort)
+    
+    js_ki_speech_template = """
+    <script>
+    const url = new URL(window.parent.location.href);
+    url.searchParams.delete("speech");
+    window.parent.history.replaceState({}, document.title, url.toString());
 
+    window.parent.document.getElementById('antwort-box').innerText = "TAUSCH_TEXT";
+    window.parent.document.getElementById('antwort-box').style.backgroundColor = "#d1ecf1";
+    window.parent.document.getElementById('antwort-box').style.color = "#0c5460";
+    window.parent.document.getElementById('antwort-box').style.display = "block";
+    
+    const speech = new SpeechSynthesisUtterance("TAUSCH_TEXT");
+    speech.lang = 'de-DE';
+    window.speechSynthesis.speak(speech);
+    </script>
+    """
+    js_ki_speech_bereit = js_ki_speech_template.replace("TAUSCH_TEXT", st.session_state.ki_antwort)
+    st.components.v1.html(js_ki_speech_bereit, height=0, width=0)
+    
+    st.session_state.ki_antwort = ""
+    if "ki_verarbeitet" in st.session_state:
+        del st.session_state.ki_verarbeitet
 
-# Rendert die fertige App
 st.components.v1.html(html_bereit, height=270)
+
