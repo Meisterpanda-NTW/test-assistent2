@@ -108,6 +108,24 @@ if sprach_input:
         else:
             st.session_state.ki_antwort = "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!"
 
+
+# Der unblockierbare Datenkanal fängt den gesprochenen Satz im Python-Skript ab
+sprach_input = ""
+
+# Überprüfen, ob Daten vom offiziellen JavaScript-SDK angekommen sind
+if "voice_input_html" in st.session_state and st.session_state.voice_input_html:
+    sprach_input = st.session_state.voice_input_html
+
+if sprach_input:
+    # Verhindert, dass derselbe Befehl doppelt ausgeführt wird
+    if "letzter_befehl" not in st.session_state or st.session_state.letzter_befehl != sprach_input:
+        st.session_state.letzter_befehl = sprach_input
+        antwort = frage_ki(sprach_input)
+        if antwort:
+            st.session_state.ki_antwort = antwort
+        else:
+            st.session_state.ki_antwort = "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!"
+
 # Das komplette HTML- und JavaScript-System für den Browser
 # Der unblockierbare Datenkanal fängt den gesprochenen Satz im Python-Skript ab
 sprach_input = ""
@@ -218,7 +236,7 @@ if (!Recognition) {
     });
     
     rec.onresult = (e) => {
-        const gehoert = e.results.transcript;
+        const gehoert = e.results[0][0].transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
         machPiep();
@@ -234,7 +252,7 @@ if (!Recognition) {
             rec.stop();
         } else if (gehoertLower.length > 0) {
             status.innerText = "🤖 Garmin überlegt...";
-            // Hier nutzen wir exakt voice_input_html für das SDK
+            // Sendet die Daten sicher an das Streamlit-System
             Streamlit.setComponentValue(gehoert);
         }
     };
@@ -265,9 +283,9 @@ if st.session_state.ki_antwort:
     </script>
     """
     js_ki_speech_bereit = js_ki_speech_template.replace("TAUSCH_TEXT", st.session_state.ki_antwort)
-    # KORREKTUR 1: String als Key verwendet!
-    st.components.v1.html(js_ki_speech_bereit, height=0, width=0, key="ki_audio_output")
+    # HIER GERETTET: key= komplett entfernt!
+    st.components.v1.html(js_ki_speech_bereit, height=0, width=0)
     st.session_state.ki_antwort = ""
 
-# KORREKTUR 2: String als Key für die Haupt-App verwendet!
-st.components.v1.html(html_bereit, height=270, key="voice_input_html")
+# HIER GERETTET: key= komplett entfernt für die Haupt-App!
+st.components.v1.html(html_bereit, height=270)
