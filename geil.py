@@ -6,6 +6,10 @@ import speech_recognition as sr
 import google.genai as genai
 from google.genai import types
 import google.genai.errors
+from gtts import gTTS
+import io
+
+
 
 st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
 st.title("🤖 Garmin REINER KI-ASSISTENT (Gemini 3.5)")
@@ -145,4 +149,23 @@ if "ki_antwort" in st.session_state and st.session_state.ki_antwort:
     </div>
     """
     st.markdown(js_speech, unsafe_allow_html=True)
+    st.session_state.ki_antwort = ""
+
+
+# UNBLOCKIERBARE AUDIO-AUSGABE: Erzeugt echten Sound direkt auf dem Server!
+if "ki_antwort" in st.session_state and st.session_state.ki_antwort:
+    st.info(f"🤖 **Garmin sagt:** {st.session_state.ki_antwort}")
+    
+    try:
+        # Wandelt den Text in echte Audio-Bytes um
+        tts = gTTS(text=st.session_state.ki_antwort, lang='de')
+        fp = io.BytesIO()
+        tts.write_to_fp(fp)
+        fp.seek(0)
+        
+        # Spielt die Sprachdatei unblockierbar direkt im Streamlit-Player mit Autoplay ab!
+        st.audio(fp, format="audio/mp3", autoplay=True)
+    except Exception as e:
+        st.error(f"Audio-Fehler: {e}")
+        
     st.session_state.ki_antwort = ""
