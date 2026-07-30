@@ -81,7 +81,6 @@ def frage_ki(text):
             return None
     return "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!"
 
-# NATIVES STREAMLIT-MIKROFON: Läuft direkt im Browser ohne iFrame-Sperren!
 # NATIVES STREAMLIT-MIKROFON
 audio_datei = st.audio_input("🎙️ Drücke auf das Mikrofon und sprich deinen Befehl:")
 
@@ -121,6 +120,25 @@ if audio_datei:
                 st.session_state.ki_antwort = "Bruder, ich habe dich nicht verstanden. Sprich lauter!"
             except sr.RequestError:
                 st.session_state.ki_antwort = "Verbindung zum Spracherkennungs-Server abgekackt!"
+
+# Antwort anzeigen und über Siri laut vorlesen lassen
+if st.session_state.ki_antwort:
+    st.info(f"🤖 **Garmin sagt:** {st.session_state.ki_antwort}")
+    
+    # Der unblockierbare Vorlese-Sound direkt auf der Hauptseite verankert
+    js_speech = f"""
+    <div style="display:none;">
+        <script>
+        const speech = new SpeechSynthesisUtterance("{st.session_state.ki_antwort}");
+        speech.lang = 'de-DE';
+        window.speechSynthesis.speak(speech);
+        </script>
+    </div>
+    """
+    st.markdown(js_speech, unsafe_allow_html=True)
+    st.session_state.ki_antwort = ""
+
+
 
 # Antwort anzeigen und über Siri laut vorlesen lassen
 if st.session_state.ki_antwort:
