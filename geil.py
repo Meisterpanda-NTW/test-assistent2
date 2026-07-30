@@ -2,18 +2,16 @@ import streamlit as st
 import base64
 import os
 import time
+import speech_recognition as sr
 import google.genai as genai
 from google.genai import types
 import google.genai.errors
 
 st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
-st.title("   🤖 Garmin KI-ASSISTENT")
+st.title("🤖 Garmin REINER KI-ASSISTENT")
 
 # HIER DEINE EIGENEN GOOGLE GEMINI SCHLÜSSEL EINTRAGEN:
-API_KEYS = [
-    "AQ.Ab8RN6Ld69Gz_Fbbj0fC-WCFh3W-zvy8O_9427zfsCicJcGkhA","AQ.Ab8RN6I2k3elYSE-o4jUQKn0GZFJWn6cYDxC6lH5FjVwtxdPUw","AQ.Ab8RN6LnllSVLqIREnCKC9J6MGggedHcqGgo144ArtCl_pK06w","AQ.Ab8RN6JxNkBfYtLIzEZKgIsD7R2wGQzMeUJ1_i3DCTnUv1kJqQ"
-]
-
+API_KEYS = ["HIER_DEIN_ERSTER_GEMINI_KEY", "HIER_DEIN_ZWEITER_GEMINI_KEY"]
 aktueller_key_index = 0
 
 def get_audio_base64(dateiname):
@@ -41,7 +39,6 @@ def initialisiere_client():
 
 client = initialisiere_client()
 
-# Deine originalen Minecraft-Bot Charakter-Anweisungen
 def frage_ki(text):
     global client, aktueller_key_index
     for _ in range(len(API_KEYS)):
@@ -76,164 +73,51 @@ def frage_ki(text):
             return None
     return "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!"
 
-# DER UNBLOCKIERBARE EMPFÄNGER: Holt sich die Frage direkt aus den Streamlit-Query-Parametern!
-query_params = st.query_params
-if "speech" in query_params:
-    sprach_input = query_params["speech"]
-    if sprach_input and ("letzter_speech" not in st.session_state or st.session_state.letzter_speech != sprach_input):
-        st.session_state.letzter_speech = sprach_input
-        st.session_state.ki_antwort = frage_ki(sprach_input)
-# Das komplette HTML- und JavaScript-System für den Browser (Teil 2 von 2)
-html_reine_web_app = """
-<div style="text-align: center; margin-bottom: 20px;">
-    <button id="mic-btn" style="background-color: #ff4b4b; color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 260px; transition: 0.3s; font-family: sans-serif;">
-        🎙️ Befehl einsprechen
-    </button>
-    <p id="status" style="color: #555; font-family: sans-serif; margin-top: 15px; font-weight: bold; font-size: 15px;">Bereit fürs iPad. Klicke zum Sprechen.</p>
-    <div id="antwort-box" style="margin-top: 20px; padding: 15px; border-radius: 8px; font-family: sans-serif; font-weight: bold; display: none; font-size: 16px;"></div>
-</div>
+# NATIVES STREAMLIT-MIKROFON: Läuft direkt im Browser ohne iFrame-Sperren!
+audio_datei = st.audio_input("🎙️ Drücke auf das Mikrofon und sprich deinen Befehl:")
 
-<script>
-const btn = document.getElementById('mic-btn');
-const status = document.getElementById('status');
-const antwortBox = document.getElementById('antwort-box');
-const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-if (!Recognition) {
-    status.innerText = "Sprachsteuerung blockiert. Bitte Safari auf dem iPad nutzen!";
-} else {
-    const rec = new Recognition();
-    rec.lang = 'de-DE';
-    rec.interimResults = false;
-    rec.maxAlternatives = 1;
-
-    let siriStimme = new SpeechSynthesisUtterance("");
-    window.speechSynthesis.speak(siriStimme);
-
-    const audioPlayer = new Audio();
-
-    function machPiep() {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        osc.connect(ctx.destination);
-        osc.start();
-        setTimeout(() => { osc.stop(); }, 200);
-    }
-
-    function spieleEchtesDuelOfFates() {
-        window.speechSynthesis.cancel();
-        const base64Data = "PLATZHALTER_DUEL_MUSIC";
-        if (base64Data.length > 0) {
-            audioPlayer.src = "data:audio/mp3;base64," + base64Data;
-            audioPlayer.volume = 0.5;
-            audioPlayer.play().catch(e => {});
-        }
-    }
-
-    function spieleCantinaSong() {
-        window.speechSynthesis.cancel();
-        const base64Data = "PLATZHALTER_CANTINA_MUSIC";
-        if (base64Data.length > 0) {
-            audioPlayer.src = "data:audio/mp3;base64," + base64Data;
-            audioPlayer.volume = 0.5;
-            audioPlayer.play().catch(e => {});
-        }
-    }
-
-    function spieleHello() {
-        window.speechSynthesis.cancel();
-        const base64Data = "PLATZHALTER_Hello_MUSIC";
-        if (base64Data.length > 0) {
-            audioPlayer.src = "data:audio/mp3;base64," + base64Data;
-            audioPlayer.volume = 0.5;
-            audioPlayer.play().catch(e => {});
-        }
-    }
-
-    function sprich(text) {
-        window.speechSynthesis.cancel(); 
-        const speech = new SpeechSynthesisUtterance(text);
-        speech.lang = 'de-DE';
-        window.speechSynthesis.speak(speech);
-    }
-
-    function zeigeAntwort(text, bgFarbe, textFarbe) {
-        antwortBox.innerText = text;
-        antwortBox.style.backgroundColor = bgFarbe;
-        antwortBox.style.color = textFarbe;
-        antwortBox.style.display = "block";
-    }
-
-    btn.addEventListener('click', () => {
-        window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
-        try { rec.start(); } catch(e) {}
-        status.innerText = "🔊 Ich höre dir zu! Sag mir einfach was du willst.";
-        btn.style.backgroundColor = "#2baf2b"; 
-        antwortBox.style.display = "none";
-    });
-    
-    rec.onresult = (e) => {
-        const gehoert = e.results[0][0].transcript;
-        const gehoertLower = gehoert.toLowerCase().trim();
-        status.innerText = "Gehört: '" + gehoert + "'";
-        machPiep();
-
-        if (gehoertLower.includes("duel of fates") || gehoertLower.includes("schicksal")) {
-            spieleEchtesDuelOfFates();
-            btn.style.backgroundColor = "#ff4b4b";
-        } else if (gehoertLower.includes("cantina") || gehoertLower.includes("bar")) {
-            spieleCantinaSong();
-            btn.style.backgroundColor = "#ff4b4b";
-        } else if (gehoertLower.includes("hello")) {
-            spieleHello();
-            btn.style.backgroundColor = "#ff4b4b";
-        } else if (gehoertLower.includes("beenden") || gehoertLower.includes("stopp")) {
-            audioPlayer.pause();
-            rec.stop();
-            btn.style.backgroundColor = "#ff4b4b";
-        } else if (gehoertLower.length > 0) {
-            status.innerText = "🤖 Garmin überlegt...";
+if audio_datei:
+    # Python wandelt das geredete Audio auf dem Server direkt in echten Text um
+    recognizer = sr.Recognizer()
+    with sr.AudioFile(audio_datei) as source:
+        audio_data = recognizer.record(source)
+        try:
+            gehoert_text = recognizer.recognize_google(audio_data, language="de-DE")
+            st.write(f"🎤 **Verstanden:** {gehoert_text}")
             
-            // UNBLOCKIERBAR: Schreibt den Text oben als echten URL-Parameter, was kein Browser blockieren kann!
-            const url = new URL(window.parent.location.href);
-            url.searchParams.set("speech", gehoertLower);
-            window.parent.location.href = url.toString();
-        }
-    };
-    
-    rec.onerror = () => { btn.style.backgroundColor = "#ff4b4b"; status.innerText = "Bereit fürs iPad. Klicke zum Sprechen."; };
-    rec.onend = () => { btn.style.backgroundColor = "#ff4b4b"; };
-}
-</script>
-"""
+            gehoert_lower = gehoert_text.lower().strip()
+            
+            # Musik-Befehle prüfen
+            if "duel of fates" in gehoert_lower or "schicksal" in gehoert_lower:
+                st.session_state.ki_antwort = "Spiele dein hochgeladenes Duel of the Fates Thema."
+                st.markdown(f'<audio src="data:audio/mp3;base64,{duel_base64}" autoplay></audio>', unsafe_allow_html=True)
+            elif "cantina" in gehoert_lower or "bar" in gehoert_lower:
+                st.session_state.ki_antwort = "Spiele den Cantina Band Song."
+                st.markdown(f'<audio src="data:audio/mp3;base64,{cantina_base64}" autoplay></audio>', unsafe_allow_html=True)
+            elif "hello" in gehoert_lower:
+                st.session_state.ki_antwort = "Spiele Hello Song."
+                st.markdown(f'<audio src="data:audio/mp3;base64,{hello_base64}" autoplay></audio>', unsafe_allow_html=True)
+            elif "beenden" in gehoert_lower or "stopp" in gehoert_lower:
+                st.session_state.ki_antwort = "Musik gestoppt."
+            else:
+                # KI abfragen
+                st.session_state.ki_antwort = frage_ki(gehoert_text)
+                
+        except sr.UnknownValueError:
+            st.session_state.ki_antwort = "Bruder, ich habe dich nicht verstanden. Sprich lauter!"
+        except sr.RequestError:
+            st.session_state.ki_antwort = "Verbindung zum Spracherkennungs-Server abgekackt!"
 
-# Ersetzt alle Musik-Platzhalter absolut crashsicher direkt in Python
-html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
-
-# Haupt-App im iFrame anzeigen (Ohne key= Argument, um Python 3.14 Abstürze zu verhindern)
-st.components.v1.html(html_bereit, height=270)
-
-# Wenn Python die Antwort berechnet hat, zeigen wir sie an und räumen den URL-Parameter sofort wieder sauber auf
+# Antwort anzeigen und über Siri laut vorlesen lassen
 if st.session_state.ki_antwort:
     st.info(f"🤖 **Garmin sagt:** {st.session_state.ki_antwort}")
     
-    js_ki_speech_template = """
+    js_speech = f"""
     <script>
-    // Entfernt den speech-Parameter aus der URL, damit beim Neuladen nicht dieselbe Frage geschickt wird
-    const url = new URL(window.parent.location.href);
-    url.searchParams.delete("speech");
-    window.parent.history.replaceState({}, document.title, url.toString());
-
-    window.parent.document.getElementById('antwort-box').innerText = "TAUSCH_TEXT";
-    window.parent.document.getElementById('antwort-box').style.backgroundColor = "#d1ecf1";
-    window.parent.document.getElementById('antwort-box').style.color = "#0c5460";
-    window.parent.document.getElementById('antwort-box').style.display = "block";
-    
-    const speech = new SpeechSynthesisUtterance("TAUSCH_TEXT");
+    const speech = new SpeechSynthesisUtterance("{st.session_state.ki_antwort}");
     speech.lang = 'de-DE';
     window.speechSynthesis.speak(speech);
     </script>
     """
-    js_ki_speech_bereit = js_ki_speech_template.replace("TAUSCH_TEXT", st.session_state.ki_antwort)
-    st.components.v1.html(js_ki_speech_bereit, height=0, width=0)
+    st.components.v1.html(js_speech, height=0, width=0)
     st.session_state.ki_antwort = ""
