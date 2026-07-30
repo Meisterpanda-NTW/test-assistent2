@@ -12,7 +12,7 @@ import io
 
 
 st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
-st.title("🤖 Garmin REINER KI-ASSISTENT")
+st.title("🤖 Garmin")
 
 # HIER DEINE EIGENEN GOOGLE GEMINI SCHLÜSSEL EINTRAGEN:
 API_KEYS = [
