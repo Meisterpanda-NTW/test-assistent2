@@ -98,6 +98,8 @@ html_reine_web_app = """
     <div id="antwort-box" style="margin-top: 20px; padding: 15px; border-radius: 8px; font-family: sans-serif; font-weight: bold; display: none; font-size: 16px;"></div>
 </div>
 
+<!-- Das offizielle Streamlit Component SDK, das Daten legal aus dem iFrame leitet -->
+<script src="https://jsdelivr.net"></script>
 <script>
 const btn = document.getElementById('mic-btn');
 const status = document.getElementById('status');
@@ -198,9 +200,10 @@ if (!Recognition) {
             btn.style.backgroundColor = "#ff4b4b";
         } else if (gehoertLower.length > 0) {
             status.innerText = "🤖 Garmin überlegt...";
-            
-            // UNBLOCKIERBARER TUNNEL: Schreibt den Text in den iFrame-Hash. Das überwindet alle CORS-Sperren!
-            window.location.hash = "voice=" + encodeURIComponent(gehoert);
+            // NATIVE DATENÜBERGABE: Sendet den erkannten Satz direkt und sicher an das Python-Gehirn
+            if (window.Streamlit) {
+                window.Streamlit.setComponentValue(gehoert);
+            }
         }
     };
     
@@ -210,14 +213,20 @@ if (!Recognition) {
 </script>
 """
 
-# Wenn der iFrame-Hash von Python ausgelesen wird, verarbeiten wir den Text im sicheren Server-Umfeld
-import urllib.parse
-html_final = html_reine_web_app
+# Musik-Streams ersetzen
+html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
 
-# JavaScript injizieren, um den Hash nach der Verarbeitung wieder sauber zu leeren
-js_hash_cleaner = ""
+# Wir starten die Custom-Komponente und fangen den Rückgabewert ab
+daten_aus_iframe = voice_input_component(html_bereit)
 
-if "ki_antwort" in st.session_state and st.session_state.ki_antwort:
+if daten_aus_iframe:
+    # Verhindert, dass derselbe Befehl in einer Schleife doppelt ausgeführt wird
+    if "letzter_befehl" not in st.session_state or st.session_state.letzter_befehl != daten_aus_iframe:
+        st.session_state.letzter_befehl = daten_aus_iframe
+        st.session_state.ki_antwort = frage_ki(daten_aus_iframe)
+
+# Wenn Python die Antwort berechnet hat, schleusen wir sie unblockierbar zur Ausgabe ein
+if st.session_state.ki_antwort:
     st.success(st.session_state.ki_antwort)
     
     js_ki_speech_template = """
@@ -235,11 +244,7 @@ if "ki_antwort" in st.session_state and st.session_state.ki_antwort:
     js_ki_speech_bereit = js_ki_speech_template.replace("TAUSCH_TEXT", st.session_state.ki_antwort)
     st.components.v1.html(js_ki_speech_bereit, height=0, width=0)
     st.session_state.ki_antwort = ""
-    js_hash_cleaner = "<script>window.location.hash = '';</script>"
 
-# Musik-Streams ersetzen
-html_bereit = html_final.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
-html_ausgabe = html_bereit + js_hash_cleaner
 
 # Rendert das Hauptfenster flüssig und ohne iFrame-SDK-Abstürze
 st.components.v1.html(html_ausgabe, height=270)
