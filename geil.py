@@ -8,15 +8,10 @@ from google.genai import types
 import google.genai.errors
 
 st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
-st.title("🤖 Garmin REINER KI-ASSISTENT")
+st.title("🤖 Garmin REINER KI-ASSISTENT (Gemini 3.5)")
 
 # HIER DEINE EIGENEN GOOGLE GEMINI SCHLÜSSEL EINTRAGEN:
-API_KEYS = [
-    "AQ.Ab8RN6Ld69Gz_Fbbj0fC-WCFh3W-zvy8O_9427zfsCicJcGkhA",
-    "AQ.Ab8RN6I2k3elYSE-o4jUQKn0GZFJWn6cYDxC6lH5FjVwtxdPUw",  # optional, falls du ein 2. Konto hast
-    "AQ.Ab8RN6LnllSVLqIREnCKC9J6MGggedHcqGgo144ArtCl_pK06w",
-    "AQ.Ab8RN6JxNkBfYtLIzEZKgIsD7R2wGQzMeUJ1_i3DCTnUv1kJqQ"
-]
+API_KEYS = ["HIER_DEIN_ERSTER_GEMINI_KEY", "HIER_DEIN_ZWEITER_GEMINI_KEY"]
 aktueller_key_index = 0
 
 def get_audio_base64(dateiname):
@@ -38,7 +33,7 @@ def initialisiere_client():
     if not API_KEYS or len(API_KEYS) == 0:
         return None
     key = API_KEYS[aktueller_key_index]
-    if "HIER_DEIN" in str(key):
+    if "HIER_DEIN" in str(key) or not str(key).strip():
         return None
     return genai.Client(api_key=key)
 
@@ -47,13 +42,18 @@ client = initialisiere_client()
 # Deine originalen Minecraft-Bot Charakter-Anweisungen
 def frage_ki(text):
     global client, aktueller_key_index
+    letzter_fehler_text = ""
+    
+    if not API_KEYS or "HIER_DEIN" in str(API_KEYS):
+        return "Bitte trage deine echten Gemini API-Keys oben im Python-Code bei API_KEYS ein!"
+        
     for _ in range(len(API_KEYS)):
+        client = initialisiere_client()
         if client is None:
-            client = initialisiere_client()
-        if client is None:
-            return "Bitte trage deine Gemini API-Keys oben im Python-Code ein!"
+            aktueller_key_index = (aktueller_key_index + 1) % len(API_KEYS)
+            continue
         try:
-            # Nutzt das offizielle, stabile Flash-Modell
+            # JETZT PERFEKT AUF DAS AKTUELLE MODEL GEMINI-3.5-FLASH GEFIXT!
             response = client.models.generate_content(
                 model="gemini-3.5-flash",
                 contents=text,
@@ -71,26 +71,25 @@ def frage_ki(text):
             )
             return response.text
         except google.genai.errors.ClientError as e:
+            letzter_fehler_text = f"Google-Fehler (Code {e.code}): {e.message}"
             if e.code == 429:
                 aktueller_key_index = (aktueller_key_index + 1) % len(API_KEYS)
-                client = initialisiere_client()
                 time.sleep(1)
                 continue
             else:
-                return f"API-Fehler: {e}"
+                return letzter_fehler_text
         except Exception as e:
-            # Fängt Server-Hänger (503) ab und rotiert sofort zum nächsten Schlüssel!
+            letzter_fehler_text = f"Allgemeiner Verbindungsfehler: {str(e)}"
             aktueller_key_index = (aktueller_key_index + 1) % len(API_KEYS)
-            client = initialisiere_client()
             time.sleep(1)
             continue
-    return "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!"
+            
+    return f"Fehler beim Aufruf. Letzte Meldung vom System: {letzter_fehler_text if letzter_fehler_text else 'Schlüssel ungültig oder leer'}"
 
 # NATIVES STREAMLIT-MIKROFON
 audio_datei = st.audio_input("🎙️ Drücke auf das Mikrofon und sprich deinen Befehl:")
 
 if audio_datei:
-    # Vergleicht direkt das Datei-Objekt, um Endlosschleifen beim Neuladen zu verhindern
     if "alte_datei" not in st.session_state or st.session_state.alte_datei != audio_datei:
         st.session_state.alte_datei = audio_datei
         
@@ -98,13 +97,11 @@ if audio_datei:
         with sr.AudioFile(audio_datei) as source:
             audio_data = recognizer.record(source)
             try:
-                # Sprache in Text umwandeln
                 gehoert_text = recognizer.recognize_google(audio_data, language="de-DE")
                 st.session_state.aktueller_text = gehoert_text
                 
                 gehoert_lower = gehoert_text.lower().strip()
                 
-                # Musik-Befehle prüfen
                 if "duel of fates" in gehoert_lower or "schicksal" in gehoert_lower:
                     st.session_state.ki_antwort = "Spiele dein hochgeladenes Duel of the Fates Thema."
                     st.markdown(f'<audio src="data:audio/mp3;base64,{duel_base64}" autoplay></audio>', unsafe_allow_html=True)
@@ -117,17 +114,14 @@ if audio_datei:
                 elif "beenden" in gehoert_lower or "stopp" in gehoert_lower:
                     st.session_state.ki_antwort = "Musik gestoppt."
                 else:
-                    # Hier wird deine Minecraft-KI-Key-Rotation aufgerufen!
                     st.session_state.ki_antwort = frage_ki(gehoert_text)
                     
             except Exception:
                 st.session_state.ki_antwort = "Bruder, ich habe dich nicht verstanden. Sprich lauter!"
 
-# Zeigt den Text auf dem Bildschirm an, solange er im Speicher liegt
 if "aktueller_text" in st.session_state and st.session_state.aktueller_text:
     st.write(f"🎤 **Verstanden:** {st.session_state.aktueller_text}")
 
-# Antwort im schicken blauen Kasten anzeigen und Siri laut vorlesen lassen
 if "ki_antwort" in st.session_state and st.session_state.ki_antwort:
     st.info(f"🤖 **Garmin sagt:** {st.session_state.ki_antwort}")
     
