@@ -156,7 +156,7 @@ if st.session_state.ki_antwort:
     """
     st.markdown(js_speech, unsafe_allow_html=True)
     st.session_state.ki_antwort = ""
-!"
+
 
 # Antwort anzeigen und über Siri laut vorlesen lassen
 if st.session_state.ki_antwort:
