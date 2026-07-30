@@ -2,8 +2,6 @@ import streamlit as st
 import base64
 import os
 import time
-import json
-import urllib.parse
 import google.genai as genai
 from google.genai import types
 import google.genai.errors
@@ -12,13 +10,7 @@ st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
 st.title("🤖 Garmin REINER KI-ASSISTENT")
 
 # HIER DEINE EIGENEN GOOGLE GEMINI SCHLÜSSEL EINTRAGEN:
-API_KEYS = [
-    "AQ.Ab8RN6Ld69Gz_Fbbj0fC-WCFh3W-zvy8O_9427zfsCicJcGkhA",
-    "AQ.Ab8RN6I2k3elYSE-o4jUQKn0GZFJWn6cYDxC6lH5FjVwtxdPUw",  # optional, falls du ein 2. Konto hast
-    "AQ.Ab8RN6LnllSVLqIREnCKC9J6MGggedHcqGgo144ArtCl_pK06w",
-    "AQ.Ab8RN6JxNkBfYtLIzEZKgIsD7R2wGQzMeUJ1_i3DCTnUv1kJqQ"
-]
-
+API_KEYS = ["HIER_DEIN_ERSTER_GEMINI_KEY", "HIER_DEIN_ZWEITER_GEMINI_KEY"]
 aktueller_key_index = 0
 
 def get_audio_base64(dateiname):
@@ -37,7 +29,6 @@ if "ki_antwort" not in st.session_state:
 
 def initialisiere_client():
     global aktueller_key_index
-    # KORREKTUR: Prüft das erste Element der Liste absolut fehlerfrei!
     if not API_KEYS or API_KEYS[0].startswith("HIER_DEIN"):
         return None
     key = API_KEYS[aktueller_key_index]
@@ -80,14 +71,28 @@ def frage_ki(text):
             return None
     return "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!"
 
-# DER UNBLOCKIERBARE EMPFÄNGER: Holt den Text sicher aus dem iFrame-Hash ab!
-query_params = st.query_params
-if "voice" in query_params:
-    sprach_input = query_params["voice"]
-    if sprach_input and "letzter_hash" not in st.session_state or st.session_state.letzter_hash != sprach_input:
-        st.session_state.letzter_hash = sprach_input
-        st.session_state.ki_antwort = frage_ki(sprach_input)
+# Das unblockierbare native Streamlit-Formular (unsichtbar im Hintergrund)
+with st.form(key="unsichtbares_formular", clear_on_submit=True):
+    sprach_input = st.text_input("Schnittstelle", label_visibility="collapsed")
+    submit_button = st.form_submit_button("Senden")
 
+if submit_button and sprach_input:
+    st.session_state.ki_antwort = frage_ki(sprach_input)
+
+# CSS, um das hässliche Textfeld absolut unsichtbar im Hintergrund zu verstecken
+st.markdown("""
+    <style>
+    div[data-testid="stForm"] {
+        position: absolute !important;
+        top: -1000px !important;
+        left: -1000px !important;
+        opacity: 0 !important;
+        height: 0px !important;
+        width: 0px !important;
+        overflow: hidden !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 # Das komplette HTML- und JavaScript-System für den Browser (Teil 2 von 2)
 html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
@@ -98,8 +103,6 @@ html_reine_web_app = """
     <div id="antwort-box" style="margin-top: 20px; padding: 15px; border-radius: 8px; font-family: sans-serif; font-weight: bold; display: none; font-size: 16px;"></div>
 </div>
 
-<!-- Das offizielle Streamlit Component SDK, das Daten legal aus dem iFrame leitet -->
-<script src="https://jsdelivr.net"></script>
 <script>
 const btn = document.getElementById('mic-btn');
 const status = document.getElementById('status');
@@ -200,9 +203,24 @@ if (!Recognition) {
             btn.style.backgroundColor = "#ff4b4b";
         } else if (gehoertLower.length > 0) {
             status.innerText = "🤖 Garmin überlegt...";
-            // NATIVE DATENÜBERGABE: Sendet den erkannten Satz direkt und sicher an das Python-Gehirn
-            if (window.Streamlit) {
-                window.Streamlit.setComponentValue(gehoert);
+            
+            // Greift auf das versteckte Streamlit-Textfeld im Hauptfenster zu
+            const inputs = window.parent.document.getElementsByTagName('input');
+            if (inputs.length > 0) {
+                const targetInput = inputs[0];
+                targetInput.value = gehoert;
+                
+                // Events triggern, damit Streamlit den Wert registriert
+                targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+                targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                // Formular nativ absenden
+                setTimeout(() => {
+                    const form = targetInput.form;
+                    if (form) {
+                        form.requestSubmit();
+                    }
+                }, 50);
             }
         }
     };
@@ -213,18 +231,13 @@ if (!Recognition) {
 </script>
 """
 
+# Musik-Platzhalter ersetzen
 html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
 
-# HIER PERFEKT REPARIERT: Das key-Argument ist jetzt als Text gesetzt. Das öffnet den unblockierbaren Datentunnel!
-daten_aus_iframe = st.components.v1.html(html_bereit, height=270, scrolling=False, key="voice_input_html")
+# Die Haupt-App wird gerendert (Ganz ohne key= Argument, um den Absturz in Python 3.14 zu verhindern!)
+st.components.v1.html(html_bereit, height=270)
 
-if daten_aus_iframe:
-    # Verhindert, dass derselbe Befehl in einer Schleife doppelt ausgeführt wird
-    if "letzter_befehl" not in st.session_state or st.session_state.letzter_befehl != daten_aus_iframe:
-        st.session_state.letzter_befehl = daten_aus_iframe
-        st.session_state.ki_antwort = frage_ki(daten_aus_iframe)
-
-# Wenn Python die Antwort berechnet hat, schleusen wir sie unblockierbar zur Ausgabe ein
+# Wenn Python die KI-Antwort berechnet hat, geben wir sie über ein temporäres Skript an das Hauptfenster aus
 if st.session_state.ki_antwort:
     st.success(st.session_state.ki_antwort)
     
@@ -241,5 +254,5 @@ if st.session_state.ki_antwort:
     </script>
     """
     js_ki_speech_bereit = js_ki_speech_template.replace("TAUSCH_TEXT", st.session_state.ki_antwort)
-    st.components.v1.html(js_ki_speech_bereit, height=0, width=0, key="ki_audio_output")
+    st.components.v1.html(js_ki_speech_bereit, height=0, width=0)
     st.session_state.ki_antwort = ""
