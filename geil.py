@@ -212,11 +212,11 @@ if (!Recognition) {
 }
 </script>
 """
-# Musik-Streams ersetzen
+
 html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
 
-# HIER REPARIERT: Wir rufen den Befehl direkt auf, statt über die fehlende Funktion zu gehen!
-daten_aus_iframe = st.components.v1.html(html_bereit, height=270, scrolling=False)
+# HIER PERFEKT REPARIERT: Das key-Argument ist jetzt als Text gesetzt. Das öffnet den unblockierbaren Datentunnel!
+daten_aus_iframe = st.components.v1.html(html_bereit, height=270, scrolling=False, key="voice_input_html")
 
 if daten_aus_iframe:
     # Verhindert, dass derselbe Befehl in einer Schleife doppelt ausgeführt wird
@@ -241,5 +241,5 @@ if st.session_state.ki_antwort:
     </script>
     """
     js_ki_speech_bereit = js_ki_speech_template.replace("TAUSCH_TEXT", st.session_state.ki_antwort)
-    st.components.v1.html(js_ki_speech_bereit, height=0, width=0)
+    st.components.v1.html(js_ki_speech_bereit, height=0, width=0, key="ki_audio_output")
     st.session_state.ki_antwort = ""
