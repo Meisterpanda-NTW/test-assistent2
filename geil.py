@@ -139,6 +139,7 @@ if "aktueller_text" in st.session_state and st.session_state.aktueller_text:
 if "ki_antwort" in st.session_state and st.session_state.ki_antwort:
     st.info(f"🤖 **Garmin sagt:** {st.session_state.ki_antwort}")
     
+    # DIESER BLOCK INJIZIERT DEINEN SPRECH-TRICK DIREKT IN DEN BROWSER!
     js_speech = f"""
     <div style="display:none;">
         <script>
@@ -150,7 +151,6 @@ if "ki_antwort" in st.session_state and st.session_state.ki_antwort:
     """
     st.markdown(js_speech, unsafe_allow_html=True)
     st.session_state.ki_antwort = ""
-
 
 # UNBLOCKIERBARE AUDIO-AUSGABE: Erzeugt echten Sound direkt auf dem Server!
 if "ki_antwort" in st.session_state and st.session_state.ki_antwort:
