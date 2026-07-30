@@ -82,39 +82,63 @@ def frage_ki(text):
     return "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!"
 
 # NATIVES STREAMLIT-MIKROFON: Läuft direkt im Browser ohne iFrame-Sperren!
+# NATIVES STREAMLIT-MIKROFON
 audio_datei = st.audio_input("🎙️ Drücke auf das Mikrofon und sprich deinen Befehl:")
 
 if audio_datei:
-    # Python wandelt das geredete Audio auf dem Server direkt in echten Text um
-    recognizer = sr.Recognizer()
-    with sr.AudioFile(audio_datei) as source:
-        audio_data = recognizer.record(source)
-        try:
-            gehoert_text = recognizer.recognize_google(audio_data, language="de-DE")
-            st.write(f"🎤 **Verstanden:** {gehoert_text}")
-            
-            gehoert_lower = gehoert_text.lower().strip()
-            
-            # Musik-Befehle prüfen
-            if "duel of fates" in gehoert_lower or "schicksal" in gehoert_lower:
-                st.session_state.ki_antwort = "Spiele dein hochgeladenes Duel of the Fates Thema."
-                st.markdown(f'<audio src="data:audio/mp3;base64,{duel_base64}" autoplay></audio>', unsafe_allow_html=True)
-            elif "cantina" in gehoert_lower or "bar" in gehoert_lower:
-                st.session_state.ki_antwort = "Spiele den Cantina Band Song."
-                st.markdown(f'<audio src="data:audio/mp3;base64,{cantina_base64}" autoplay></audio>', unsafe_allow_html=True)
-            elif "hello" in gehoert_lower:
-                st.session_state.ki_antwort = "Spiele Hello Song."
-                st.markdown(f'<audio src="data:audio/mp3;base64,{hello_base64}" autoplay></audio>', unsafe_allow_html=True)
-            elif "beenden" in gehoert_lower or "stopp" in gehoert_lower:
-                st.session_state.ki_antwort = "Musik gestoppt."
-            else:
-                # KI abfragen
-                st.session_state.ki_antwort = frage_ki(gehoert_text)
+    # Wir holen uns die eindeutige ID der Tondatei, um doppelte Verarbeitung beim Neuladen zu verhindern
+    aufnahme_id = audio_datei.id if hasattr(audio_datei, 'id') else audio_datei.name
+    
+    if "letzte_aufnahme_id" not in st.session_state or st.session_state.letzte_aufnahme_id != aufnahme_id:
+        st.session_state.letzte_aufnahme_id = aufnahme_id
+        
+        recognizer = sr.Recognizer()
+        with sr.AudioFile(audio_datei) as source:
+            audio_data = recognizer.record(source)
+            try:
+                gehoert_text = recognizer.recognize_google(audio_data, language="de-DE")
+                st.write(f"🎤 **Verstanden:** {gehoert_text}")
                 
-        except sr.UnknownValueError:
-            st.session_state.ki_antwort = "Bruder, ich habe dich nicht verstanden. Sprich lauter!"
-        except sr.RequestError:
-            st.session_state.ki_antwort = "Verbindung zum Spracherkennungs-Server abgekackt!"
+                gehoert_lower = gehoert_text.lower().strip()
+                
+                # Musik-Befehle prüfen
+                if "duel of fates" in gehoert_lower or "schicksal" in gehoert_lower:
+                    st.session_state.ki_antwort = "Spiele dein hochgeladenes Duel of the Fates Thema."
+                    st.markdown(f'<audio src="data:audio/mp3;base64,{duel_base64}" autoplay></audio>', unsafe_allow_html=True)
+                elif "cantina" in gehoert_lower or "bar" in gehoert_lower:
+                    st.session_state.ki_antwort = "Spiele den Cantina Band Song."
+                    st.markdown(f'<audio src="data:audio/mp3;base64,{cantina_base64}" autoplay></audio>', unsafe_allow_html=True)
+                elif "hello" in gehoert_lower:
+                    st.session_state.ki_antwort = "Spiele Hello Song."
+                    st.markdown(f'<audio src="data:audio/mp3;base64,{hello_base64}" autoplay></audio>', unsafe_allow_html=True)
+                elif "beenden" in gehoert_lower or "stopp" in gehoert_lower:
+                    st.session_state.ki_antwort = "Musik gestoppt."
+                else:
+                    # KI abfragen mit deinen rotierenden Keys
+                    st.session_state.ki_antwort = frage_ki(gehoert_text)
+                    
+            except sr.UnknownValueError:
+                st.session_state.ki_antwort = "Bruder, ich habe dich nicht verstanden. Sprich lauter!"
+            except sr.RequestError:
+                st.session_state.ki_antwort = "Verbindung zum Spracherkennungs-Server abgekackt!"
+
+# Antwort anzeigen und über Siri laut vorlesen lassen
+if st.session_state.ki_antwort:
+    st.info(f"🤖 **Garmin sagt:** {st.session_state.ki_antwort}")
+    
+    # Der unblockierbare Vorlese-Sound direkt auf der Hauptseite verankert
+    js_speech = f"""
+    <div style="display:none;">
+        <script>
+        const speech = new SpeechSynthesisUtterance("{st.session_state.ki_antwort}");
+        speech.lang = 'de-DE';
+        window.speechSynthesis.speak(speech);
+        </script>
+    </div>
+    """
+    st.markdown(js_speech, unsafe_allow_html=True)
+    st.session_state.ki_antwort = ""
+!"
 
 # Antwort anzeigen und über Siri laut vorlesen lassen
 if st.session_state.ki_antwort:
