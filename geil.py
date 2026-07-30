@@ -26,7 +26,6 @@ def get_audio_base64(dateiname):
 duel_base64 = get_audio_base64("duel.mp3")
 cantina_base64 = get_audio_base64("cantina.mp3")
 hello_base64 = get_audio_base64("hello.mp3")
-
 # Das komplette HTML- und JavaScript-System für den Browser
 html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
@@ -116,7 +115,7 @@ if (!Recognition) {
         antwortBox.style.display = "none";
     });
     
-    rec.onresult = (e) => {
+    rec.onresult = async (e) => {
         const gehoert = e.results[0][0].transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
@@ -124,61 +123,48 @@ if (!Recognition) {
 
         if (gehoertLower.includes("duel of fates") || gehoertLower.includes("schicksal")) {
             spieleEchtesDuelOfFates();
+            btn.style.backgroundColor = "#ff4b4b";
         } else if (gehoertLower.includes("cantina") || gehoertLower.includes("bar")) {
             spieleCantinaSong();
+            btn.style.backgroundColor = "#ff4b4b";
         } else if (gehoertLower.includes("hello")) {
             spieleHello();
+            btn.style.backgroundColor = "#ff4b4b";
         } else if (gehoertLower.includes("beenden") || gehoertLower.includes("stopp")) {
             audioPlayer.pause();
             rec.stop();
+            btn.style.backgroundColor = "#ff4b4b";
         } else if (gehoertLower.length > 0) {
             status.innerText = "🤖 Garmin überlegt...";
             
-            async function sendeMitRotation() {
-                const systemPrompt = "Du antwortest immer auf Deutsch. Halte dich kurz und präzise. Rede aus der ich-Perspektive und als wärst du ein Mensch. Verhalte dich so wie wenn einer Hallo schreibt das du mit hallo zurück schreibst und Rechschreib fehler dürfen auch drinnen sein. Und falls einer nach Beleidigungen fragt oder nach anderen verbotenen sachen dann Antworte das du es nicht weißt oder so. und du wenn einer nach bilder fragt dann antworte das du nix schicken darfst weil deine Mutter das verboten hatt. Wenn jemand nach dein Alter frag sag es nicht und die anderen sachen die man nicht online sagen darf. Du sollst wie ein Jugendlicher Reden. Antworte in maximal 1-2 kurzen Sätzen!";
+            const systemPrompt = "Du antwortest immer auf Deutsch. Halte dich kurz und präzise. Rede aus der ich-Perspektive und als wärst du ein Mensch. Verhalte dich so wie wenn einer Hallo schreibt das du mit hallo zurück schreibst und Rechschreib fehler dürfen auch drinnen sein. Und falls einer nach Beleidigungen fragt oder nach anderen verbotenen sachen dann Antworte das du es nicht weißt oder so. und du wenn einer nach bilder fragt dann antworte das du nix schicken darfst weil deine Mutter das verboten hatt. Wenn jemand nach dein Alter frag sag es nicht und die anderen sachen die man nicht online sagen darf. Du sollst wie ein Jugendlicher Reden. Antworte in maximal 1-2 kurzen Sätzen!";
+            
+            try {
+                // UNBLOCKIERBAR: Nutzt das freie Pollinations-API über POST. Es hat KEINE CORS-Sperren im Browser und läuft blitzschnell ohne Keys!
+                const response = await fetch("https://pollinations.ai", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        messages: [
+                            { role: "system", content: systemPrompt },
+                            { role: "user", content: gehoert }
+                        ],
+                        model: "openai",
+                        jsonMode: false
+                    })
+                });
                 
-                for (let i = 0; i < BROWSER_API_KEYS.length; i++) {
-                    const aktiver_key = BROWSER_API_KEYS[aktueller_browser_key_index];
-                    const targetUrl = "https://googleapis.com" + aktiver_key;
-                    
-                    // UNBLOCKIERBAR: Wir schicken die Anfrage über den AllOrigins-Tunnel, der CORS austrickst
-                    const proxyUrl = "https://allorigins.win" + encodeURIComponent(targetUrl);
-                    
-                    try {
-                        const response = await fetch(proxyUrl, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                contents: [{ parts: [{ text: systemPrompt + " Frage: " + gehoert }] }]
-                            })
-                        });
-                        
-                        const wrapperData = await response.json();
-                        // AllOrigins liefert die Antwort als Text-String in 'contents' zurück
-                        const data = JSON.parse(wrapperData.contents);
-                        
-                        if (data.error) {
-                            aktueller_browser_key_index = (aktueller_browser_key_index + 1) % BROWSER_API_KEYS.length;
-                            continue; 
-                        }
-                        
-                        const antwortText = data.candidates[0].content.parts[0].text;
-                        zeigeAntwort(antwortText, "#d1ecf1", "#0c5460");
-                        sprich(antwortText);
-                        btn.style.backgroundColor = "#ff4b4b";
-                        return; 
-                    } catch (e) {
-                        aktueller_browser_key_index = (aktueller_browser_key_index + 1) % BROWSER_API_KEYS.length;
-                    }
-                }
+                if (!response.ok) throw new Error("API Fehler");
                 
-                const absageText = "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!";
+                const antwortText = await response.text();
+                zeigeAntwort(antwortText, "#d1ecf1", "#0c5460");
+                sprich(antwortText);
+            } catch (err) {
+                const absageText = "Bruder, mein Gehirn hat gerade einen Hänger. Frag mich gleich nochmal!";
                 zeigeAntwort(absageText, "#fff3cd", "#333");
                 sprich(absageText);
-                btn.style.backgroundColor = "#ff4b4b";
             }
-            
-            sendeMitRotation();
+            btn.style.backgroundColor = "#ff4b4b";
         }
     };
     
@@ -188,19 +174,9 @@ if (!Recognition) {
 </script>
 """
 
-# WICHTIG: Python wandelt deine Schlüssel-Liste in eine sichere JavaScript-Liste um!
-js_api_keys_liste = json.dumps(API_KEYS)
-
 # Ersetzt alle Musik-Platzhalter absolut crashsicher direkt in Python
 html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
 
-# Schleust deine mehreren Schlüssel unblockierbar direkt vor dem Start in das JavaScript ein
-html_final = f"""
-<script>
-const BROWSER_API_KEYS = {js_api_keys_liste};
-let aktueller_browser_key_index = 0;
-</script>
-""" + html_bereit
-
 # Haupt-App im iFrame anzeigen
-st.components.v1.html(html_final, height=270)
+st.components.v1.html(html_bereit, height=270)
+
