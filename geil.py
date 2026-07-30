@@ -170,9 +170,8 @@ if (!Recognition) {
 }
 </script>
 """
-
-# Ersetzt alle Musik-Platzhalter und den API-Key absolut crashsicher direkt in Python
-html_bereit = html_reine_web_app.replace("PLATZHALTER_API_KEY", GEMINI_API_KEY).replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
+html_bereit = html_reine_web_app.replace("PLATZHALTER_API_KEY", API_KEYS[0]).replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
 
 # Haupt-App im iFrame anzeigen (Verwendet st.components.v1.html ohne fehlerhafte 'key=' Argumente)
 st.components.v1.html(html_bereit, height=270)
+
