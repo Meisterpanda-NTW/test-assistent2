@@ -79,6 +79,26 @@ def frage_ki(text):
             return None
     return "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!"
 
+# Das unblockierbare Empfänger-Feld nimmt den Text von JavaScript entgegen
+sprach_input = st.text_input("Schnittstelle", key="hidden_voice_input", label_visibility="collapsed")
+
+if sprach_input:
+    st.session_state.ki_antwort = frage_ki(sprach_input)
+
+# CSS zum kompletten Verstecken des Textfeldes im Hintergrund
+st.markdown("""
+    <style>
+    div[data-testid="stTextInput"] {
+        position: absolute !important;
+        top: -1000px !important;
+        left: -1000px !important;
+        opacity: 0 !important;
+        height: 0px !important;
+        width: 0px !important;
+        overflow: hidden !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 # Das komplette HTML- und JavaScript-System für den Browser (Teil 2 von 2)
 html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
@@ -168,8 +188,8 @@ if (!Recognition) {
         antwortBox.style.display = "none";
     });
     
-    rec.onresult = async (e) => {
-        // HIER EXAKT MIT DEN RICHTIGEN INDIZES REPARIERT:
+    rec.onresult = (e) => {
+        // PERFEKTER UND AUSFÜHRLICHER BROWSER-INDEX-PFAD
         const gehoert = e.results[0][0].transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
@@ -191,28 +211,25 @@ if (!Recognition) {
         } else if (gehoertLower.length > 0) {
             status.innerText = "🤖 Garmin überlegt...";
             
-            const systemPrompt = "Du antwortest immer auf Deutsch. Halte dich kurz und präzise. Rede aus der ich-Perspektive und als wärst du ein Mensch. Verhalte dich so wie wenn einer Hallo schreibt das du mit hallo zurück schreibst und Rechschreib fehler dürfen auch drinnen sein. Und falls einer nach Beleidigungen fragt oder nach anderen verbotenen sachen dann Antworte das du es nicht weißt oder so. und du wenn einer nach bilder fragt dann antworte das du nix schicken darfst weil deine Mutter das verboten hatt. Wenn jemand nach dein Alter frag sag es nicht und die anderen sachen die man nicht online sagen darf. Du sollst wie ein Jugendlicher Reden. Antworte in maximal 1-2 kurzen Sätzen!";
-            
-            try {
-                const volltext = systemPrompt + " Frage: " + gehoert;
-                const zielUrl = "https://pollinations.ai" + encodeURIComponent(volltext) + "?model=openai&cache=false";
+            // Unblockierbarer Input-Weg: Schreibt den Text virtuell in das unsichtbare Python-Textfeld
+            const inputs = window.parent.document.getElementsByTagName('input');
+            if (inputs.length > 0) {
+                const targetInput = inputs[0];
+                targetInput.value = gehoert;
                 
-                const response = await fetch(zielUrl, { method: "GET" });
-                if (!response.ok) throw new Error("API Fehler");
+                targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+                targetInput.dispatchEvent(new Event('change', { bubbles: true }));
                 
-                const antwortText = await response.text();
-                if(antwortText && antwortText.trim().length > 0) {
-                    zeigeAntwort(antwortText, "#d1ecf1", "#0c5460");
-                    sprich(antwortText);
-                } else {
-                    throw new Error("Leere Antwort");
-                }
-            } catch (err) {
-                const absageText = "Bruder, mein Gehirn hat gerade einen Hänger. Frag mich gleich nochmal!";
-                zeigeAntwort(absageText, "#fff3cd", "#333");
-                sprich(absageText);
+                setTimeout(() => {
+                    const form = targetInput.form;
+                    if (form) {
+                        form.requestSubmit();
+                    } else {
+                        const ke = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, keyCode: 13, key: 'Enter' });
+                        targetInput.dispatchEvent(ke);
+                    }
+                }, 50);
             }
-            btn.style.backgroundColor = "#ff4b4b";
         }
     };
     
@@ -225,6 +242,23 @@ if (!Recognition) {
 # Ersetzt alle Musik-Platzhalter absolut crashsicher direkt in Python
 html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
 
-# Haupt-App im iFrame anzeigen
+# Haupt-App im iFrame anzeigen (Ohne key= Argument, um Python 3.14 Abstürze zu verhindern)
 st.components.v1.html(html_bereit, height=270)
 
+# Wenn Python die Antwort berechnet hat, schleusen wir sie direkt zur Vorlese-Ausgabe ein
+if st.session_state.ki_antwort:
+    js_ki_speech_template = """
+    <script>
+    window.parent.document.getElementById('antwort-box').innerText = "TAUSCH_TEXT";
+    window.parent.document.getElementById('antwort-box').style.backgroundColor = "#d1ecf1";
+    window.parent.document.getElementById('antwort-box').style.color = "#0c5460";
+    window.parent.document.getElementById('antwort-box').style.display = "block";
+    
+    const speech = new SpeechSynthesisUtterance("TAUSCH_TEXT");
+    speech.lang = 'de-DE';
+    window.speechSynthesis.speak(speech);
+    </script>
+    """
+    js_ki_speech_bereit = js_ki_speech_template.replace("TAUSCH_TEXT", st.session_state.ki_antwort)
+    st.components.v1.html(js_ki_speech_bereit, height=0, width=0)
+    st.session_state.ki_antwort = ""
