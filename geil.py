@@ -12,7 +12,7 @@ import io
 
 
 st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
-st.title("🤖 Garmin REINER KI-ASSISTENT (Gemini 3.5)")
+st.title("🤖 Garmin REINER KI-ASSISTENT")
 
 # HIER DEINE EIGENEN GOOGLE GEMINI SCHLÜSSEL EINTRAGEN:
 API_KEYS = [
@@ -79,6 +79,7 @@ def frage_ki(text):
                             "und du wenn einer nach bilder fragt dann antworte das du nix schicken darfst weil deine Mutter das verboten hatt. "
                             "Wenn jemand nach dein Alter frag sag es nicht und die anderen sachen die man nicht online sagen darf."
                             "Du sollst wie ein Jugendlicher Reden. Antworte in maximal 1-2 kurzen Sätzen!"
+                            "du heißt Garmin"
                         )
                     ),
                 )
