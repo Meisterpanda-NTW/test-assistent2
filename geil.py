@@ -139,4 +139,3 @@ if "ki_antwort" in st.session_state and st.session_state.ki_antwort:
     st.markdown(js_speech, unsafe_allow_html=True)
     # Antwort wird erst nach dem erfolgreichen Vorlesen geleert
     st.session_state.ki_antwort = ""
-
