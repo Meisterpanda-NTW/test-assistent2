@@ -169,7 +169,7 @@ if (!Recognition) {
     });
     
     rec.onresult = async (e) => {
-        // HIER NATIV-INDEX BOMBENFEST REPARIERT FÜR CHROME & IPAD:
+        // HIER EXAKT MIT DEN RICHTIGEN INDIZES REPARIERT:
         const gehoert = e.results[0][0].transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
@@ -227,3 +227,4 @@ html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).
 
 # Haupt-App im iFrame anzeigen
 st.components.v1.html(html_bereit, height=270)
+
