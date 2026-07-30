@@ -38,12 +38,14 @@ def initialisiere_client():
     global aktueller_key_index
     if not API_KEYS:
         return None
+    # Holt den aktuellen Key sicher aus der Liste heraus
     key = API_KEYS[aktueller_key_index]
     if "HIER_DEIN" in key:
         return None
     return genai.Client(api_key=key)
 
 client = initialisiere_client()
+
 
 def frage_ki(text):
     global client, aktueller_key_index
