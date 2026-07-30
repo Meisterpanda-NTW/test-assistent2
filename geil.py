@@ -86,28 +86,32 @@ sprach_input = st.text_input("Gesprochener Befehl:", key="voice_input_field")
 if st.button("🚀 Frage an Garmin senden", use_container_width=True):
     if sprach_input:
         st.session_state.ki_antwort = frage_ki(sprach_input)
-
-# Das HTML- und JavaScript-System für die Mikrofon-Aufnahme
+# Das komplette HTML- und JavaScript-System für den Browser (Teil A)
 html_reine_web_app = """
-<div style="text-align: center; margin-bottom: 5px;">
+<div style="text-align: center; margin-bottom: 20px;">
     <button id="mic-btn" style="background-color: #ff4b4b; color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 260px; transition: 0.3s; font-family: sans-serif;">
         🎙️ Befehl einsprechen
     </button>
-    <p id="status" style="color: #555; font-family: sans-serif; margin-top: 10px; font-weight: bold; font-size: 14px; margin-bottom: 5px;">Bereit fürs iPad. Klicke zum Sprechen.</p>
+    <p id="status" style="color: #555; font-family: sans-serif; margin-top: 15px; font-weight: bold; font-size: 15px;">Bereit fürs iPad. Klicke zum Sprechen.</p>
+    <div id="antwort-box" style="margin-top: 20px; padding: 15px; border-radius: 8px; font-family: sans-serif; font-weight: bold; display: none; font-size: 16px;"></div>
 </div>
 
 <script>
 const btn = document.getElementById('mic-btn');
 const status = document.getElementById('status');
+const antwortBox = document.getElementById('antwort-box');
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 if (!Recognition) {
-    status.innerText = "Sprachsteuerung blockiert.";
+    status.innerText = "Sprachsteuerung blockiert. Bitte Safari auf dem iPad nutzen!";
 } else {
     const rec = new Recognition();
     rec.lang = 'de-DE';
     rec.interimResults = false;
     rec.maxAlternatives = 1;
+
+    let siriStimme = new SpeechSynthesisUtterance("");
+    window.speechSynthesis.speak(siriStimme);
 
     const audioPlayer = new Audio();
 
@@ -120,6 +124,7 @@ if (!Recognition) {
     }
 
     function spieleEchtesDuelOfFates() {
+        window.speechSynthesis.cancel();
         const base64Data = "PLATZHALTER_DUEL_MUSIC";
         if (base64Data.length > 0) {
             audioPlayer.src = "data:audio/mp3;base64," + base64Data;
@@ -129,6 +134,7 @@ if (!Recognition) {
     }
 
     function spieleCantinaSong() {
+        window.speechSynthesis.cancel();
         const base64Data = "PLATZHALTER_CANTINA_MUSIC";
         if (base64Data.length > 0) {
             audioPlayer.src = "data:audio/mp3;base64," + base64Data;
@@ -138,6 +144,7 @@ if (!Recognition) {
     }
 
     function spieleHello() {
+        window.speechSynthesis.cancel();
         const base64Data = "PLATZHALTER_Hello_MUSIC";
         if (base64Data.length > 0) {
             audioPlayer.src = "data:audio/mp3;base64," + base64Data;
@@ -146,13 +153,28 @@ if (!Recognition) {
         }
     }
 
+    function sprich(text) {
+        window.speechSynthesis.cancel(); 
+        const speech = new SpeechSynthesisUtterance(text);
+        speech.lang = 'de-DE';
+        window.speechSynthesis.speak(speech);
+    }
+
+    function zeigeAntwort(text, bgFarbe, textFarbe) {
+        antwortBox.innerText = text;
+        antwortBox.style.backgroundColor = bgFarbe;
+        antwortBox.style.color = textFarbe;
+        antwortBox.style.display = "block";
+    }
+
     btn.addEventListener('click', () => {
+        window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
         try { rec.start(); } catch(e) {}
         status.innerText = "🔊 Ich höre dir zu! Sag mir einfach was du willst.";
         btn.style.backgroundColor = "#2baf2b"; 
+        antwortBox.style.display = "none";
     });
-    
-    rec.onresult = (e) => {
+    rec.onresult = async (e) => {
         const gehoert = e.results[0][0].transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
@@ -160,20 +182,49 @@ if (!Recognition) {
 
         if (gehoertLower.includes("duel of fates") || gehoertLower.includes("schicksal")) {
             spieleEchtesDuelOfFates();
+            btn.style.backgroundColor = "#ff4b4b";
         } else if (gehoertLower.includes("cantina") || gehoertLower.includes("bar")) {
             spieleCantinaSong();
+            btn.style.backgroundColor = "#ff4b4b";
         } else if (gehoertLower.includes("hello")) {
             spieleHello();
+            btn.style.backgroundColor = "#ff4b4b";
         } else if (gehoertLower.includes("beenden") || gehoertLower.includes("stopp")) {
             audioPlayer.pause();
             rec.stop();
+            btn.style.backgroundColor = "#ff4b4b";
         } else if (gehoertLower.length > 0) {
-            status.innerText = "Eingetragen! Klicke jetzt auf den blauen Button darunter.";
+            status.innerText = "🤖 Garmin überlegt...";
             
-            // Trägt den Text sicher über das offizielle PostMessage ins Textfeld ein
-            window.parent.postMessage({ type: 'VOICE_INPUT', text: gehoert }, '*');
+            const systemPrompt = "Du antwortest immer auf Deutsch. Halte dich kurz und präzise. Rede aus der ich-Perspektive und als wärst du ein Mensch. Verhalte dich so wie wenn einer Hallo schreibt das du mit hallo zurück schreibst und Rechschreib fehler dürfen auch drinnen sein. Und falls einer nach Beleidigungen fragt oder nach anderen verbotenen sachen dann Antworte das du es nicht weißt oder so. und du wenn einer nach bilder fragt dann antworte das du nix schicken darfst weil deine Mutter das verboten hatt. Wenn jemand nach dein Alter frag sag es nicht und die anderen sachen die man nicht online sagen darf. Du sollst wie ein Jugendlicher Reden. Antworte in maximal 1-2 kurzen Sätzen!";
+            
+            try {
+                // ABSOLUT UNBLOCKIERBARER DIREKT-FUNK: Keine iFrame-Sperren, keine API-Keys nötig!
+                const response = await fetch("https://pollinations.ai", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        messages: [
+                            { role: "system", content: systemPrompt },
+                            { role: "user", content: gehoert }
+                        ],
+                        model: "openai",
+                        jsonMode: false
+                    })
+                });
+                
+                if (!response.ok) throw new Error("API Fehler");
+                
+                const antwortText = await response.text();
+                zeigeAntwort(antwortText, "#d1ecf1", "#0c5460");
+                sprich(antwortText);
+            } catch (err) {
+                const absageText = "Bruder, mein Gehirn hat gerade einen Hänger. Frag mich gleich nochmal!";
+                zeigeAntwort(absageText, "#fff3cd", "#333");
+                sprich(absageText);
+            }
+            btn.style.backgroundColor = "#ff4b4b";
         }
-        btn.style.backgroundColor = "#ff4b4b";
     };
     
     rec.onerror = () => { btn.style.backgroundColor = "#ff4b4b"; status.innerText = "Bereit fürs iPad. Klicke zum Sprechen."; };
@@ -182,43 +233,9 @@ if (!Recognition) {
 </script>
 """
 
-# Musik-Platzhalter ersetzen
+# Ersetzt alle Musik-Platzhalter absolut crashsicher direkt in Python
 html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
 
-# Sicherer Empfänger im Hauptfenster fängt die Sprache ab und trägt sie ins Feld ein
-js_postmessage_receiver = """
-<script>
-window.addEventListener('message', function(event) {
-    if (event.data && event.data.type === 'VOICE_INPUT') {
-        const inputs = window.parent.document.getElementsByTagName('input');
-        if (inputs.length > 0) {
-            inputs[0].value = event.data.text;
-            inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
-            inputs[0].dispatchEvent(new Event('change', { bubbles: true }));
-        }
-    }
-});
-</script>
-"""
+# Haupt-App im iFrame anzeigen (Komplett ohne fehlerhafte 'key=' Argumente)
+st.components.v1.html(html_bereit, height=270)
 
-# Rendert die Aufnahme-App im iFrame
-st.components.v1.html(html_bereit, height=90)
-st.components.v1.html(js_postmessage_receiver, height=0, width=0)
-
-# REINES PYTHON-UI FÜR DIE ANTWORT UND DEN SOUND (Absolut unblockierbar)
-if st.session_state.ki_antwort:
-    # 1. Zeigt die Antwort direkt auf der echten Webseite an (Schickes hellblaues Streamlit-Feld)
-    st.info(f"🤖 **Garmin sagt:** {st.session_state.ki_antwort}")
-    
-    # 2. Liest die Antwort laut über den Browser vor (Keine iFrame-Abstürze möglich)
-    js_ki_speech = f"""
-    <script>
-    const speech = new SpeechSynthesisUtterance("{st.session_state.ki_antwort}");
-    speech.lang = 'de-DE';
-    window.speechSynthesis.speak(speech);
-    </script>
-    """
-    st.components.v1.html(js_ki_speech, height=0, width=0)
-    
-    # Speicher leeren für den nächsten Befehl
-    st.session_state.ki_antwort = ""
