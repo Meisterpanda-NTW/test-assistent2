@@ -53,44 +53,48 @@ def frage_ki(text):
     if not API_KEYS or "HIER_DEIN" in str(API_KEYS):
         return "Bitte trage deine echten Gemini API-Keys oben im Python-Code bei API_KEYS ein!"
         
-    for _ in range(len(API_KEYS)):
-        client = initialisiere_client()
-        if client is None:
-            aktueller_key_index = (aktueller_key_index + 1) % len(API_KEYS)
-            continue
-        try:
-            # JETZT PERFEKT AUF DAS AKTUELLE MODEL GEMINI-3.5-FLASH GEFIXT!
-            response = client.models.generate_content(
-                model="gemini-3.5-flash",
-                contents=text,
-                config=types.GenerateContentConfig(
-                    system_instruction=(
-                        "Du antwortest immer auf Deutsch. Halte dich kurz und präzise. "
-                        "Rede aus der ich-Perspektive und als wärst du ein Mensch. "
-                        "Verhalte dich so wie wenn einer Hallo schreibt das du mit hallo zurück schreibst und Rechschreib fehler dürfen auch drinnen sein. "
-                        "Und falls einer nach Beleidigungen fragt oder nach anderen verbotenen sachen dann Antworte das du es nicht weißt oder so. "
-                        "und du wenn einer nach bilder fragt dann antworte das du nix schicken darfst weil deine Mutter das verboten hatt. "
-                        "Wenn jemand nach dein Alter frag sag es nicht und die anderen sachen die man nicht online sagen darf."
-                        "Du sollst wie ein Jugendlicher Reden. Antworte in maximal 1-2 kurzen Sätzen!"
-                    )
-                ),
-            )
-            return response.text
-        except google.genai.errors.ClientError as e:
-            letzter_fehler_text = f"Google-Fehler (Code {e.code}): {e.message}"
-            if e.code == 429:
+    # HIER NUR NOCH NEUE 3.5ER MODELLE: Schaltet auf PRO um, wenn FLASH überlastet ist!
+    modelle_liste = ["gemini-3.5-flash", "gemini-3.5-pro"]
+    
+    for modell in modelle_liste:
+        for _ in range(len(API_KEYS)):
+            client = initialisiere_client()
+            if client is None:
                 aktueller_key_index = (aktueller_key_index + 1) % len(API_KEYS)
-                time.sleep(1)
                 continue
-            else:
-                return letzter_fehler_text
-        except Exception as e:
-            letzter_fehler_text = f"Allgemeiner Verbindungsfehler: {str(e)}"
-            aktueller_key_index = (aktueller_key_index + 1) % len(API_KEYS)
-            time.sleep(1)
-            continue
+            try:
+                response = client.models.generate_content(
+                    model=modell,
+                    contents=text,
+                    config=types.GenerateContentConfig(
+                        system_instruction=(
+                            "Du antwortest immer auf Deutsch. Halte dich kurz und präzise. "
+                            "Rede aus der ich-Perspektive und als wärst du ein Mensch. "
+                            "Verhalte dich so wie wenn einer Hallo schreibt das du mit hallo zurück schreibst und Rechschreib fehler dürfen auch drinnen sein. "
+                            "Und falls einer nach Beleidigungen fragt oder nach anderen verbotenen sachen dann Antworte das du es nicht weißt oder so. "
+                            "und du wenn einer nach bilder fragt dann antworte das du nix schicken darfst weil deine Mutter das verboten hatt. "
+                            "Wenn jemand nach dein Alter frag sag es nicht und die anderen sachen die man nicht online sagen darf."
+                            "Du sollst wie ein Jugendlicher Reden. Antworte in maximal 1-2 kurzen Sätzen!"
+                        )
+                    ),
+                )
+                return response.text
+            except google.genai.errors.ClientError as e:
+                letzter_fehler_text = f"Google-Fehler ({modell} - Code {e.code}): {e.message}"
+                if e.code == 429:
+                    aktueller_key_index = (aktueller_key_index + 1) % len(API_KEYS)
+                    time.sleep(0.5)
+                    continue
+                else:
+                    return letzter_fehler_text
+            except Exception as e:
+                # Fängt den 503-Hänger ab und wechselt sofort den Key
+                letzter_fehler_text = f"Server-Hänger bei {modell}: {str(e)}"
+                aktueller_key_index = (aktueller_key_index + 1) % len(API_KEYS)
+                time.sleep(0.5)
+                continue
             
-    return f"Fehler beim Aufruf. Letzte Meldung vom System: {letzter_fehler_text if letzter_fehler_text else 'Schlüssel ungültig oder leer'}"
+    return f"Fehler beim Aufruf. Letzte Meldung vom System: {letzter_fehler_text}"
 
 # NATIVES STREAMLIT-MIKROFON
 audio_datei = st.audio_input("🎙️ Drücke auf das Mikrofon und sprich deinen Befehl:")
