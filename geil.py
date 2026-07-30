@@ -169,7 +169,7 @@ if (!Recognition) {
     });
     
     rec.onresult = async (e) => {
-        // HIER 100% EXAKT FÜR BROWSER UND IPAD KORRIGIERT:
+        // HIER NATIV-INDEX BOMBENFEST REPARIERT FÜR CHROME & IPAD:
         const gehoert = e.results[0][0].transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
@@ -201,7 +201,6 @@ if (!Recognition) {
                 if (!response.ok) throw new Error("API Fehler");
                 
                 const antwortText = await response.text();
-                // KORREKTUR 2: Prüft, ob Text zurückkommt, und wirft ihn direkt auf den Schirm!
                 if(antwortText && antwortText.trim().length > 0) {
                     zeigeAntwort(antwortText, "#d1ecf1", "#0c5460");
                     sprich(antwortText);
@@ -228,4 +227,3 @@ html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).
 
 # Haupt-App im iFrame anzeigen
 st.components.v1.html(html_bereit, height=270)
-
