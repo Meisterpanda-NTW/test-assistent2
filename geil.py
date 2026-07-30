@@ -9,7 +9,7 @@ st.title("🤖 Garmin REINER KI-ASSISTENT")
 # 1. HIER DEINE EIGENEN GOOGLE GEMINI SCHLÜSSEL EINTRAGEN:
 API_KEYS = [
     "AQ.Ab8RN6Ld69Gz_Fbbj0fC-WCFh3W-zvy8O_9427zfsCicJcGkhA",
-    "AQ.Ab8RN6I2k3elYSE-o4jUQKn0GZFJWn6cYDxC6lH5FjVwtxdPUw",
+    "AQ.Ab8RN6I2k3elYSE-o4jUQKn0GZFJWn6cYDxC6lH5FjVwtxdPUw",  # optional, falls du ein 2. Konto hast
     "AQ.Ab8RN6LnllSVLqIREnCKC9J6MGggedHcqGgo144ArtCl_pK06w",
     "AQ.Ab8RN6JxNkBfYtLIzEZKgIsD7R2wGQzMeUJ1_i3DCTnUv1kJqQ"
 ]
@@ -117,7 +117,6 @@ if (!Recognition) {
     });
     
     rec.onresult = (e) => {
-        // HIER REPARIERT 1: Holt den Text fehlerfrei aus dem iPad-System heraus!
         const gehoert = e.results[0][0].transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
@@ -140,10 +139,13 @@ if (!Recognition) {
                 
                 for (let i = 0; i < BROWSER_API_KEYS.length; i++) {
                     const aktiver_key = BROWSER_API_KEYS[aktueller_browser_key_index];
-                    const apiUrl = "https://googleapis.com" + aktiver_key;
+                    const targetUrl = "https://googleapis.com" + aktiver_key;
+                    
+                    // UNBLOCKIERBAR: Wir schicken die Anfrage über den AllOrigins-Tunnel, der CORS austrickst
+                    const proxyUrl = "https://allorigins.win" + encodeURIComponent(targetUrl);
                     
                     try {
-                        const response = await fetch(apiUrl, {
+                        const response = await fetch(proxyUrl, {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
@@ -151,14 +153,15 @@ if (!Recognition) {
                             })
                         });
                         
-                        const data = await response.json();
+                        const wrapperData = await response.json();
+                        // AllOrigins liefert die Antwort als Text-String in 'contents' zurück
+                        const data = JSON.parse(wrapperData.contents);
                         
                         if (data.error) {
                             aktueller_browser_key_index = (aktueller_browser_key_index + 1) % BROWSER_API_KEYS.length;
                             continue; 
                         }
                         
-                        // HIER REPARIERT 2: Der exakte eckige Klammern-Pfad, um die Gemini-Antwort auszulesen!
                         const antwortText = data.candidates[0].content.parts[0].text;
                         zeigeAntwort(antwortText, "#d1ecf1", "#0c5460");
                         sprich(antwortText);
