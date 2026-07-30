@@ -7,7 +7,7 @@ from google.genai import types
 import google.genai.errors
 
 st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
-st.title("🤖 Garmin KI-ASSISTENT")
+st.title("   🤖 Garmin KI-ASSISTENT")
 
 # HIER DEINE EIGENEN GOOGLE GEMINI SCHLÜSSEL EINTRAGEN:
 API_KEYS = [
