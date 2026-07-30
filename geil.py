@@ -78,6 +78,7 @@ def frage_ki(text):
         except Exception as e:
             return None
     return "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!"
+
 # Das komplette HTML- und JavaScript-System für den Browser (Teil 2 von 2)
 html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
@@ -168,6 +169,7 @@ if (!Recognition) {
     });
     
     rec.onresult = async (e) => {
+        // HIER 100% EXAKT FÜR BROWSER UND IPAD KORRIGIERT:
         const gehoert = e.results[0][0].transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
@@ -192,7 +194,6 @@ if (!Recognition) {
             const systemPrompt = "Du antwortest immer auf Deutsch. Halte dich kurz und präzise. Rede aus der ich-Perspektive und als wärst du ein Mensch. Verhalte dich so wie wenn einer Hallo schreibt das du mit hallo zurück schreibst und Rechschreib fehler dürfen auch drinnen sein. Und falls einer nach Beleidigungen fragt oder nach anderen verbotenen sachen dann Antworte das du es nicht weißt oder so. und du wenn einer nach bilder fragt dann antworte das du nix schicken darfst weil deine Mutter das verboten hatt. Wenn jemand nach dein Alter frag sag es nicht und die anderen sachen die man nicht online sagen darf. Du sollst wie ein Jugendlicher Reden. Antworte in maximal 1-2 kurzen Sätzen!";
             
             try {
-                // UNBLOCKIERBAR: Per reinem GET-Fetch an die Text-API übergeben, bricht alle CORS-iFrame-Sperren!
                 const volltext = systemPrompt + " Frage: " + gehoert;
                 const zielUrl = "https://pollinations.ai" + encodeURIComponent(volltext) + "?model=openai&cache=false";
                 
@@ -200,8 +201,13 @@ if (!Recognition) {
                 if (!response.ok) throw new Error("API Fehler");
                 
                 const antwortText = await response.text();
-                zeigeAntwort(antwortText, "#d1ecf1", "#0c5460");
-                sprich(antwortText);
+                // KORREKTUR 2: Prüft, ob Text zurückkommt, und wirft ihn direkt auf den Schirm!
+                if(antwortText && antwortText.trim().length > 0) {
+                    zeigeAntwort(antwortText, "#d1ecf1", "#0c5460");
+                    sprich(antwortText);
+                } else {
+                    throw new Error("Leere Antwort");
+                }
             } catch (err) {
                 const absageText = "Bruder, mein Gehirn hat gerade einen Hänger. Frag mich gleich nochmal!";
                 zeigeAntwort(absageText, "#fff3cd", "#333");
@@ -220,5 +226,6 @@ if (!Recognition) {
 # Ersetzt alle Musik-Platzhalter absolut crashsicher direkt in Python
 html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
 
-# Haupt-App im iFrame anzeigen (Komplett ohne fehlerhafte 'key=' Argumente für Python 3.14!)
+# Haupt-App im iFrame anzeigen
 st.components.v1.html(html_bereit, height=270)
+
