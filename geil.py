@@ -10,13 +10,7 @@ st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
 st.title("🤖 Garmin REINER KI-ASSISTENT")
 
 # HIER DEINE EIGENEN GOOGLE GEMINI SCHLÜSSEL EINTRAGEN:
-API_KEYS = [
-    "AQ.Ab8RN6Ld69Gz_Fbbj0fC-WCFh3W-zvy8O_9427zfsCicJcGkhA",
-    "AQ.Ab8RN6I2k3elYSE-o4jUQKn0GZFJWn6cYDxC6lH5FjVwtxdPUw",  # optional, falls du ein 2. Konto hast
-    "AQ.Ab8RN6LnllSVLqIREnCKC9J6MGggedHcqGgo144ArtCl_pK06w",
-    "AQ.Ab8RN6JxNkBfYtLIzEZKgIsD7R2wGQzMeUJ1_i3DCTnUv1kJqQ"
-]
-
+API_KEYS = ["HIER_DEIN_ERSTER_GEMINI_KEY", "HIER_DEIN_ZWEITER_GEMINI_KEY"]
 aktueller_key_index = 0
 
 def get_audio_base64(dateiname):
@@ -33,11 +27,15 @@ hello_base64 = get_audio_base64("hello.mp3")
 if "ki_antwort" not in st.session_state:
     st.session_state.ki_antwort = ""
 
+# HIER PERFEKT REPARIERT FÜR PYTHON 3.14 UND MEHRERE KEYS:
 def initialisiere_client():
     global aktueller_key_index
-    if not API_KEYS or API_KEYS[0].startswith("HIER_DEIN"):
+    if not API_KEYS:
         return None
+    # Holt den aktuellen Key sicher aus der Liste heraus
     key = API_KEYS[aktueller_key_index]
+    if "HIER_DEIN" in key:
+        return None
     return genai.Client(api_key=key)
 
 client = initialisiere_client()
@@ -99,6 +97,7 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
+
 # Das komplette HTML- und JavaScript-System für den Browser (Teil 2 von 2)
 html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
