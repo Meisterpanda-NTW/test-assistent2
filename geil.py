@@ -34,24 +34,27 @@ hello_base64 = get_audio_base64("hello.mp3")
 if "ki_antwort" not in st.session_state:
     st.session_state.ki_antwort = ""
 
+# HIER BOMBENFEST REPARIERT: Holt den Key ohne gefährliche .startswith() Prüfung
 def initialisiere_client():
     global aktueller_key_index
-    if not API_KEYS:
+    if not API_KEYS or len(API_KEYS) == 0:
         return None
-    # Holt den aktuellen Key sicher aus der Liste heraus
     key = API_KEYS[aktueller_key_index]
-    if "HIER_DEIN" in key:
+    # Falls du vergessen hast den Platzhalter zu ändern, bricht er ab
+    if "HIER_DEIN" in str(key):
         return None
     return genai.Client(api_key=key)
 
 client = initialisiere_client()
 
-
+# Deine originalen Minecraft-Bot Charakter-Anweisungen
 def frage_ki(text):
     global client, aktueller_key_index
     for _ in range(len(API_KEYS)):
         if client is None:
             client = initialisiere_client()
+        if client is None:
+            return "Bitte trage deine Gemini API-Keys oben im Python-Code ein!"
         try:
             response = client.models.generate_content(
                 model="gemini-2.5-flash",
@@ -76,9 +79,9 @@ def frage_ki(text):
                 time.sleep(1)
                 continue
             else:
-                return None
+                return f"API-Fehler: {e}"
         except Exception as e:
-            return None
+            return f"Allgemeiner Fehler: {e}"
     return "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!"
 
 # NATIVES STREAMLIT-MIKROFON
@@ -97,7 +100,6 @@ if audio_datei:
                 gehoert_text = recognizer.recognize_google(audio_data, language="de-DE")
                 st.session_state.aktueller_text = gehoert_text
                 
-                # WICHTIG: Die KI-Antwort wird genau JETZT berechnet, bevor irgendwas gelöscht wird!
                 gehoert_lower = gehoert_text.lower().strip()
                 
                 # Musik-Befehle prüfen
@@ -137,5 +139,4 @@ if "ki_antwort" in st.session_state and st.session_state.ki_antwort:
     </div>
     """
     st.markdown(js_speech, unsafe_allow_html=True)
-    # Antwort wird erst nach dem erfolgreichen Vorlesen geleert
     st.session_state.ki_antwort = ""
