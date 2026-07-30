@@ -212,12 +212,11 @@ if (!Recognition) {
 }
 </script>
 """
-
 # Musik-Streams ersetzen
 html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
 
-# Wir starten die Custom-Komponente und fangen den Rückgabewert ab
-daten_aus_iframe = voice_input_component(html_bereit)
+# HIER REPARIERT: Wir rufen den Befehl direkt auf, statt über die fehlende Funktion zu gehen!
+daten_aus_iframe = st.components.v1.html(html_bereit, height=270, scrolling=False)
 
 if daten_aus_iframe:
     # Verhindert, dass derselbe Befehl in einer Schleife doppelt ausgeführt wird
@@ -244,7 +243,3 @@ if st.session_state.ki_antwort:
     js_ki_speech_bereit = js_ki_speech_template.replace("TAUSCH_TEXT", st.session_state.ki_antwort)
     st.components.v1.html(js_ki_speech_bereit, height=0, width=0)
     st.session_state.ki_antwort = ""
-
-
-# Rendert das Hauptfenster flüssig und ohne iFrame-SDK-Abstürze
-st.components.v1.html(html_ausgabe, height=270)
