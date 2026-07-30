@@ -9,7 +9,7 @@ import google.genai.errors
 st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
 st.title("🤖 Garmin REINER KI-ASSISTENT")
 
-# HIER DEINE EIGENEN GOOGLE GEMINI SCHLÜSSEL EINTRAGEN:
+# 1. HIER DEINE EIGENEN GOOGLE GEMINI SCHLÜSSEL EINTRAGEN:
 API_KEYS = [
     "AQ.Ab8RN6Ld69Gz_Fbbj0fC-WCFh3W-zvy8O_9427zfsCicJcGkhA",
     "AQ.Ab8RN6I2k3elYSE-o4jUQKn0GZFJWn6cYDxC6lH5FjVwtxdPUw",  # optional, falls du ein 2. Konto hast
@@ -79,21 +79,21 @@ def frage_ki(text):
             return None
     return "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!"
 
-# Das sichtbare Streamlit-Textfeld dient jetzt als sicherer, unblockierbarer Empfänger!
-sprach_input = st.text_input("Sprachbefehl hier eingeben oder oben einsprechen:", key="hidden_voice_input")
+# Das echte native Streamlit Textfeld nimmt den Text unblockierbar auf
+sprach_input = st.text_input("Gesprochener Befehl:", key="voice_input_field")
 
-if sprach_input:
-    # Verhindert doppelte Ausführung beim Neuladen
-    if "letzter_input" not in st.session_state or st.session_state.letzter_input != sprach_input:
-        st.session_state.letzter_input = sprach_input
+# Wenn der native Streamlit-Sende-Button gedrückt wird, rechnet Python
+if st.button("🚀 Frage an Garmin senden", use_container_width=True):
+    if sprach_input:
         st.session_state.ki_antwort = frage_ki(sprach_input)
-# Das komplette HTML- und JavaScript-System für den Browser (Teil 2 von 2)
+
+# Das HTML- und JavaScript-System für die Mikrofon-Aufnahme
 html_reine_web_app = """
-<div style="text-align: center; margin-bottom: 20px;">
+<div style="text-align: center; margin-bottom: 5px;">
     <button id="mic-btn" style="background-color: #ff4b4b; color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 260px; transition: 0.3s; font-family: sans-serif;">
         🎙️ Befehl einsprechen
     </button>
-    <p id="status" style="color: #555; font-family: sans-serif; margin-top: 15px; font-weight: bold; font-size: 15px;">Bereit fürs iPad. Klicke zum Sprechen.</p>
+    <p id="status" style="color: #555; font-family: sans-serif; margin-top: 10px; font-weight: bold; font-size: 14px; margin-bottom: 5px;">Bereit fürs iPad. Klicke zum Sprechen.</p>
 </div>
 
 <script>
@@ -102,15 +102,12 @@ const status = document.getElementById('status');
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 if (!Recognition) {
-    status.innerText = "Sprachsteuerung blockiert. Bitte Safari auf dem iPad nutzen!";
+    status.innerText = "Sprachsteuerung blockiert.";
 } else {
     const rec = new Recognition();
     rec.lang = 'de-DE';
     rec.interimResults = false;
     rec.maxAlternatives = 1;
-
-    let siriStimme = new SpeechSynthesisUtterance("");
-    window.speechSynthesis.speak(siriStimme);
 
     const audioPlayer = new Audio();
 
@@ -123,7 +120,6 @@ if (!Recognition) {
     }
 
     function spieleEchtesDuelOfFates() {
-        window.speechSynthesis.cancel();
         const base64Data = "PLATZHALTER_DUEL_MUSIC";
         if (base64Data.length > 0) {
             audioPlayer.src = "data:audio/mp3;base64," + base64Data;
@@ -133,7 +129,6 @@ if (!Recognition) {
     }
 
     function spieleCantinaSong() {
-        window.speechSynthesis.cancel();
         const base64Data = "PLATZHALTER_CANTINA_MUSIC";
         if (base64Data.length > 0) {
             audioPlayer.src = "data:audio/mp3;base64," + base64Data;
@@ -143,7 +138,6 @@ if (!Recognition) {
     }
 
     function spieleHello() {
-        window.speechSynthesis.cancel();
         const base64Data = "PLATZHALTER_Hello_MUSIC";
         if (base64Data.length > 0) {
             audioPlayer.src = "data:audio/mp3;base64," + base64Data;
@@ -153,7 +147,6 @@ if (!Recognition) {
     }
 
     btn.addEventListener('click', () => {
-        window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
         try { rec.start(); } catch(e) {}
         status.innerText = "🔊 Ich höre dir zu! Sag mir einfach was du willst.";
         btn.style.backgroundColor = "#2baf2b"; 
@@ -167,23 +160,20 @@ if (!Recognition) {
 
         if (gehoertLower.includes("duel of fates") || gehoertLower.includes("schicksal")) {
             spieleEchtesDuelOfFates();
-            btn.style.backgroundColor = "#ff4b4b";
         } else if (gehoertLower.includes("cantina") || gehoertLower.includes("bar")) {
             spieleCantinaSong();
-            btn.style.backgroundColor = "#ff4b4b";
         } else if (gehoertLower.includes("hello")) {
             spieleHello();
-            btn.style.backgroundColor = "#ff4b4b";
         } else if (gehoertLower.includes("beenden") || gehoertLower.includes("stopp")) {
             audioPlayer.pause();
             rec.stop();
-            btn.style.backgroundColor = "#ff4b4b";
         } else if (gehoertLower.length > 0) {
-            status.innerText = "🤖 Garmin überlegt...";
+            status.innerText = "Eingetragen! Klicke jetzt auf den blauen Button darunter.";
             
-            // ABSOLUT UNBLOCKIERBAR: Sendet die Daten legal per PostMessage ans Hauptfenster
+            // Trägt den Text sicher über das offizielle PostMessage ins Textfeld ein
             window.parent.postMessage({ type: 'VOICE_INPUT', text: gehoert }, '*');
         }
+        btn.style.backgroundColor = "#ff4b4b";
     };
     
     rec.onerror = () => { btn.style.backgroundColor = "#ff4b4b"; status.innerText = "Bereit fürs iPad. Klicke zum Sprechen."; };
@@ -195,50 +185,32 @@ if (!Recognition) {
 # Musik-Platzhalter ersetzen
 html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
 
-# Ein unblockierbarer Event-Listener im Hauptfenster fängt das Datenpaket ab und tippt es in das Streamlit-Feld ein
+# Sicherer Empfänger im Hauptfenster fängt die Sprache ab und trägt sie ins Feld ein
 js_postmessage_receiver = """
 <script>
 window.addEventListener('message', function(event) {
     if (event.data && event.data.type === 'VOICE_INPUT') {
-        const gesprochenerText = event.data.text;
-        
-        // Findet das native Streamlit Textfeld im Hauptfenster
         const inputs = window.parent.document.getElementsByTagName('input');
         if (inputs.length > 0) {
-            const targetInput = inputs[0];
-            targetInput.value = gesprochenerText;
-            
-            // Triggert die Events, damit Streamlit die Änderung bemerkt
-            targetInput.dispatchEvent(new Event('input', { bubbles: true }));
-            targetInput.dispatchEvent(new Event('change', { bubbles: true }));
-            
-            // Sendet das Formular automatisch ab
-            setTimeout(() => {
-                const form = targetInput.form;
-                if (form) {
-                    form.requestSubmit();
-                } else {
-                    // Falls kein Formular da ist, simulieren wir Enter
-                    const ke = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, keyCode: 13, key: 'Enter' });
-                    targetInput.dispatchEvent(ke);
-                }
-            }, 50);
+            inputs[0].value = event.data.text;
+            inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
+            inputs[0].dispatchEvent(new Event('change', { bubbles: true }));
         }
     }
 });
 </script>
 """
 
-# Rendert die Haupt-App (Der Button)
-st.components.v1.html(html_bereit, height=130)
-
-# Rendert den unblockierbaren Empfänger im Hauptkontext
+# Rendert die Aufnahme-App im iFrame
+st.components.v1.html(html_bereit, height=90)
 st.components.v1.html(js_postmessage_receiver, height=0, width=0)
 
-# Wenn Python die KI-Antwort berechnet hat, geben wir sie flüssig aus und lesen sie laut vor
+# REINES PYTHON-UI FÜR DIE ANTWORT UND DEN SOUND (Absolut unblockierbar)
 if st.session_state.ki_antwort:
-    st.success(st.session_state.ki_antwort)
+    # 1. Zeigt die Antwort direkt auf der echten Webseite an (Schickes hellblaues Streamlit-Feld)
+    st.info(f"🤖 **Garmin sagt:** {st.session_state.ki_antwort}")
     
+    # 2. Liest die Antwort laut über den Browser vor (Keine iFrame-Abstürze möglich)
     js_ki_speech = f"""
     <script>
     const speech = new SpeechSynthesisUtterance("{st.session_state.ki_antwort}");
@@ -247,4 +219,6 @@ if st.session_state.ki_antwort:
     </script>
     """
     st.components.v1.html(js_ki_speech, height=0, width=0)
+    
+    # Speicher leeren für den nächsten Befehl
     st.session_state.ki_antwort = ""
