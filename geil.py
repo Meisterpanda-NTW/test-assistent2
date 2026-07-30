@@ -136,20 +136,22 @@ if audio_datei:
 if "aktueller_text" in st.session_state and st.session_state.aktueller_text:
     st.write(f"🎤 **Verstanden:** {st.session_state.aktueller_text}")
 
-if "ki_antwort" in st.session_state and st.session_state.ki_antwort:
+# HIER PERFEKT REPARIERT: Nutzt die klick-aktivierte Sitzung für den Sound!
+if st.session_state.ki_antwort:
     st.info(f"🤖 **Garmin sagt:** {st.session_state.ki_antwort}")
     
-    # DIESER BLOCK INJIZIERT DEINEN SPRECH-TRICK DIREKT IN DEN BROWSER!
-    js_speech = f"""
-    <div style="display:none;">
-        <script>
-        const speech = new SpeechSynthesisUtterance("{st.session_state.ki_antwort}");
-        speech.lang = 'de-DE';
-        window.speechSynthesis.speak(speech);
-        </script>
-    </div>
+    # Der unblockierbare Vorlese-Befehl ohne versteckte div-Sperren
+    js_ki_speech = f"""
+    <script>
+    // Nutzt die von dir freigeschaltete Stimme direkt im Browser-Fenster
+    const speech = new SpeechSynthesisUtterance("{st.session_state.ki_antwort}");
+    speech.lang = 'de-DE';
+    window.speechSynthesis.speak(speech);
+    </script>
     """
-    st.markdown(js_speech, unsafe_allow_html=True)
+    st.components.v1.html(js_ki_speech, height=0, width=0)
+    
+    # Speicher erst am Ende leeren, damit JavaScript den Text garantiert erwischt!
     st.session_state.ki_antwort = ""
 
 # UNBLOCKIERBARE AUDIO-AUSGABE: Erzeugt echten Sound direkt auf dem Server!
