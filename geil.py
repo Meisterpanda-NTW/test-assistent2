@@ -85,7 +85,7 @@ def frage_ki(text):
 audio_datei = st.audio_input("🎙️ Drücke auf das Mikrofon und sprich deinen Befehl:")
 
 if audio_datei:
-    # Sicherer Abgleich direkt über das Datei-Objekt, um Schleifen zu verhindern
+    # Vergleicht direkt das Datei-Objekt, um Endlosschleifen beim Neuladen zu verhindern
     if "alte_datei" not in st.session_state or st.session_state.alte_datei != audio_datei:
         st.session_state.alte_datei = audio_datei
         
@@ -96,36 +96,35 @@ if audio_datei:
                 # Sprache in Text umwandeln
                 gehoert_text = recognizer.recognize_google(audio_data, language="de-DE")
                 st.session_state.aktueller_text = gehoert_text
+                
+                # WICHTIG: Die KI-Antwort wird genau JETZT berechnet, bevor irgendwas gelöscht wird!
+                gehoert_lower = gehoert_text.lower().strip()
+                
+                # Musik-Befehle prüfen
+                if "duel of fates" in gehoert_lower or "schicksal" in gehoert_lower:
+                    st.session_state.ki_antwort = "Spiele dein hochgeladenes Duel of the Fates Thema."
+                    st.markdown(f'<audio src="data:audio/mp3;base64,{duel_base64}" autoplay></audio>', unsafe_allow_html=True)
+                elif "cantina" in gehoert_lower or "bar" in gehoert_lower:
+                    st.session_state.ki_antwort = "Spiele den Cantina Band Song."
+                    st.markdown(f'<audio src="data:audio/mp3;base64,{cantina_base64}" autoplay></audio>', unsafe_allow_html=True)
+                elif "hello" in gehoert_lower:
+                    st.session_state.ki_antwort = "Spiele Hello Song."
+                    st.markdown(f'<audio src="data:audio/mp3;base64,{hello_base64}" autoplay></audio>', unsafe_allow_html=True)
+                elif "beenden" in gehoert_lower or "stopp" in gehoert_lower:
+                    st.session_state.ki_antwort = "Musik gestoppt."
+                else:
+                    # Hier wird deine Minecraft-KI-Key-Rotation aufgerufen!
+                    st.session_state.ki_antwort = frage_ki(gehoert_text)
+                    
             except Exception:
                 st.session_state.ki_antwort = "Bruder, ich habe dich nicht verstanden. Sprich lauter!"
 
-# Wenn Text erfolgreich erkannt wurde, jagen wir ihn durch die Logik
+# Zeigt den Text auf dem Bildschirm an, solange er im Speicher liegt
 if "aktueller_text" in st.session_state and st.session_state.aktueller_text:
-    text_rein = st.session_state.aktueller_text
-    st.write(f"🎤 **Verstanden:** {text_rein}")
-    gehoert_lower = text_rein.lower().strip()
-    
-    # Musik-Befehle prüfen
-    if "duel of fates" in gehoert_lower or "schicksal" in gehoert_lower:
-        st.session_state.ki_antwort = "Spiele dein hochgeladenes Duel of the Fates Thema."
-        st.markdown(f'<audio src="data:audio/mp3;base64,{duel_base64}" autoplay></audio>', unsafe_allow_html=True)
-    elif "cantina" in gehoert_lower or "bar" in gehoert_lower:
-        st.session_state.ki_antwort = "Spiele den Cantina Band Song."
-        st.markdown(f'<audio src="data:audio/mp3;base64,{cantina_base64}" autoplay></audio>', unsafe_allow_html=True)
-    elif "hello" in gehoert_lower:
-        st.session_state.ki_antwort = "Spiele Hello Song."
-        st.markdown(f'<audio src="data:audio/mp3;base64,{hello_base64}" autoplay></audio>', unsafe_allow_html=True)
-    elif "beenden" in gehoert_lower or "stopp" in gehoert_lower:
-        st.session_state.ki_antwort = "Musik gestoppt."
-    else:
-        # Hier wird deine KI-Key-Rotation aufgerufen
-        st.session_state.ki_antwort = frage_ki(text_rein)
-    
-    # Text löschen, damit es beim nächsten Laden bereit ist
-    st.session_state.aktueller_text = ""
+    st.write(f"🎤 **Verstanden:** {st.session_state.aktueller_text}")
 
-# Antwort im schicken blauen Kasten anzeigen und Siri vorlesen lassen
-if st.session_state.ki_antwort:
+# Antwort im schicken blauen Kasten anzeigen und Siri laut vorlesen lassen
+if "ki_antwort" in st.session_state and st.session_state.ki_antwort:
     st.info(f"🤖 **Garmin sagt:** {st.session_state.ki_antwort}")
     
     js_speech = f"""
@@ -138,5 +137,6 @@ if st.session_state.ki_antwort:
     </div>
     """
     st.markdown(js_speech, unsafe_allow_html=True)
+    # Antwort wird erst nach dem erfolgreichen Vorlesen geleert
     st.session_state.ki_antwort = ""
 
