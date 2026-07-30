@@ -37,7 +37,8 @@ if "ki_antwort" not in st.session_state:
 
 def initialisiere_client():
     global aktueller_key_index
-    if not API_KEYS or API_KEYS.startswith("HIER_DEIN"):
+    # KORREKTUR: Prüft das erste Element der Liste absolut fehlerfrei!
+    if not API_KEYS or API_KEYS[0].startswith("HIER_DEIN"):
         return None
     key = API_KEYS[aktueller_key_index]
     return genai.Client(api_key=key)
