@@ -40,12 +40,13 @@ def initialisiere_client():
     if not API_KEYS or len(API_KEYS) == 0:
         return None
     key = API_KEYS[aktueller_key_index]
-    # Falls du vergessen hast den Platzhalter zu ändern, bricht er ab
     if "HIER_DEIN" in str(key):
         return None
+    # HIER REPARIERT: Nutzt die korrekte Schreibweise für die neue Google-Bibliothek!
     return genai.Client(api_key=key)
 
 client = initialisiere_client()
+
 
 # Deine originalen Minecraft-Bot Charakter-Anweisungen
 def frage_ki(text):
