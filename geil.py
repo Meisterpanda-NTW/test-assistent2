@@ -58,7 +58,7 @@ def frage_ki(text):
             return "Bitte trage deine Gemini API-Keys oben im Python-Code ein!"
         try:
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.5-flash",
                 contents=text,
                 config=types.GenerateContentConfig(
                     system_instruction=(
