@@ -1,17 +1,13 @@
 import streamlit as st
 import base64
 import os
+import json
 
 st.set_page_config(page_title="Garmin KI Assistent", page_icon="🤖")
 st.title("🤖 Garmin REINER KI-ASSISTENT")
 
-# 1. HIER DEINEN GEMINI API SCHLÜSSEL EINTRAGEN:
-API_KEYS = [
-    "AQ.Ab8RN6Ld69Gz_Fbbj0fC-WCFh3W-zvy8O_9427zfsCicJcGkhA",
-    "AQ.Ab8RN6I2k3elYSE-o4jUQKn0GZFJWn6cYDxC6lH5FjVwtxdPUw",  # optional, falls du ein 2. Konto hast
-    "AQ.Ab8RN6LnllSVLqIREnCKC9J6MGggedHcqGgo144ArtCl_pK06w",
-    "AQ.Ab8RN6JxNkBfYtLIzEZKgIsD7R2wGQzMeUJ1_i3DCTnUv1kJqQ"
-]
+# 1. HIER DEINE EIGENEN GOOGLE GEMINI SCHLÜSSEL EINTRAGEN:
+API_KEYS = ["HIER_DEIN_ERSTER_GEMINI_KEY", "HIER_DEIN_ZWEITER_GEMINI_KEY"]
 
 # Funktion: Wir wandeln die Musikdateien in unblockierbare Daten-Streams um
 def get_audio_base64(dateiname):
@@ -24,7 +20,8 @@ def get_audio_base64(dateiname):
 duel_base64 = get_audio_base64("duel.mp3")
 cantina_base64 = get_audio_base64("cantina.mp3")
 hello_base64 = get_audio_base64("hello.mp3")
-# Das komplette HTML- und JavaScript-System für den Browser (Teil 2B)
+
+# Das komplette HTML- und JavaScript-System für den Browser
 html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
     <button id="mic-btn" style="background-color: #ff4b4b; color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 260px; transition: 0.3s; font-family: sans-serif;">
@@ -113,8 +110,9 @@ if (!Recognition) {
         antwortBox.style.display = "none";
     });
     
-    rec.onresult = async (e) => {
-        const gehoert = e.results[0][0].transcript; // EXAKTER NATIV-INDEX: Liest Text auf jedem iPad aus!
+    rec.onresult = (e) => {
+        // EXAKTER NATIV-INDEX: Liest Text auf jedem iPad aus (wie auf deinem Screenshot!)
+        const gehoert = e.results[0][0].transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
         machPiep();
@@ -130,38 +128,52 @@ if (!Recognition) {
             rec.stop();
         } else if (gehoertLower.length > 0) {
             status.innerText = "🤖 Garmin überlegt...";
-            try {
+            
+            // INTELLIGENTE KEY-ROTATION: Versucht alle deine Schlüssel nacheinander durch!
+            async function sendeMitRotation() {
                 const systemPrompt = "Du antwortest immer auf Deutsch. Halte dich kurz und präzise. Rede aus der ich-Perspektive und als wärst du ein Mensch. Verhalte dich so wie wenn einer Hallo schreibt das du mit hallo zurück schreibst und Rechschreib fehler dürfen auch drinnen sein. Und falls einer nach Beleidigungen fragt oder nach anderen verbotenen sachen dann Antworte das du es nicht weißt oder so. und du wenn einer nach bilder fragt dann antworte das du nix schicken darfst weil deine Mutter das verboten hatt. Wenn jemand nach dein Alter frag sag es nicht und die anderen sachen die man nicht online sagen darf. Du sollst wie ein Jugendlicher Reden. Antworte in maximal 1-2 kurzen Sätzen!";
                 
-                // UNBLOCKIERBARER DIREKT-FUNK: Schickt die Frage über einen freien CORS-Proxy an die Google-Server
-                const apiUrl = "https://googleapis.com";
-                const proxyUrl = "https://herokuapp.com"; // Umgeht alle Browser-Sperren komplett!
-                
-                const response = await fetch(proxyUrl + apiUrl, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: systemPrompt + " Frage: " + gehoert }] }]
-                    })
-                });
-                
-                const data = await response.json();
-                
-                // Wenn der Key das Limit erreicht hat oder ungültig ist, springen wir in den Fehler-Block
-                if (data.error) {
-                    throw new Error("Key voll");
+                for (let i = 0; i < BROWSER_API_KEYS.length; i++) {
+                    const aktiver_key = BROWSER_API_KEYS[aktueller_browser_key_index];
+                    // Wir nutzen die unblockierbare Direkt-Verbindung
+                    const apiUrl = "https://googleapis.com" + aktiver_key;
+                    
+                    try {
+                        const response = await fetch(apiUrl, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                contents: [{ parts: [{ text: systemPrompt + " Frage: " + gehoert }] }]
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        // Wenn der Key das Limit erreicht hat (Fehler 429), rotiere sofort weiter!
+                        if (data.error) {
+                            aktueller_browser_key_index = (aktueller_browser_key_index + 1) % BROWSER_API_KEYS.length;
+                            continue; 
+                        }
+                        
+                        // Antwort aus der Gemini-Datenstruktur auslesen
+                        const antwortText = data.candidates[0].content.parts[0].text;
+                        zeigeAntwort(antwortText, "#d1ecf1", "#0c5460");
+                        sprich(antwortText);
+                        btn.style.backgroundColor = "#ff4b4b";
+                        return; // Erfolg! Funktion beenden
+                    } catch (e) {
+                        aktueller_browser_key_index = (aktueller_browser_key_index + 1) % BROWSER_API_KEYS.length;
+                    }
                 }
                 
-                const antwortText = data.candidates[0].content.parts[0].text;
-                zeigeAntwort(antwortText, "#d1ecf1", "#0c5460");
-                sprich(antwortText);
-            } catch (err) {
-                // HIER DEINE GEWÜNSCHTE ABSAGE: Wenn alle Keys voll oder blockiert sind
+                // DEINE GEWÜNSCHTE ABSAGE: Wenn wirklich alle Schlüssel voll sind
                 const absageText = "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!";
                 zeigeAntwort(absageText, "#fff3cd", "#333");
                 sprich(absageText);
+                btn.style.backgroundColor = "#ff4b4b";
             }
-            btn.style.backgroundColor = "#ff4b4b";
+            
+            sendeMitRotation();
         }
     };
     
@@ -170,8 +182,20 @@ if (!Recognition) {
 }
 </script>
 """
-html_bereit = html_reine_web_app.replace("PLATZHALTER_API_KEY", API_KEYS[0]).replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
 
-# Haupt-App im iFrame anzeigen (Verwendet st.components.v1.html ohne fehlerhafte 'key=' Argumente)
-st.components.v1.html(html_bereit, height=270)
+# WICHTIG: Python wandelt deine Schlüssel-Liste in eine sichere JavaScript-Liste um!
+js_api_keys_liste = json.dumps(API_KEYS)
 
+# Ersetzt alle Musik-Platzhalter absolut crashsicher direkt in Python
+html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
+
+# Schleust deine mehreren Schlüssel unblockierbar direkt vor dem Start in das JavaScript ein
+html_final = f"""
+<script>
+const BROWSER_API_KEYS = {js_api_keys_liste};
+let aktueller_browser_key_index = 0;
+</script>
+""" + html_bereit
+
+# Haupt-App im iFrame anzeigen
+st.components.v1.html(html_final, height=270)
