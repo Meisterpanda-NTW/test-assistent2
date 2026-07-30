@@ -54,7 +54,7 @@ def frage_ki(text):
         return "Bitte trage deine echten Gemini API-Keys oben im Python-Code bei API_KEYS ein!"
         
     # HIER NUR NOCH NEUE 3.5ER MODELLE: Schaltet auf PRO um, wenn FLASH überlastet ist!
-    modelle_liste = ["gemini-3.5-flash", "gemini-3.5-pro"]
+    modelle_liste = ["gemini-3.5-flash", "gemini-3.1-pro"]
     
     for modell in modelle_liste:
         for _ in range(len(API_KEYS)):
