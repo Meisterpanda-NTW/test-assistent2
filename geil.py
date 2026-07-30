@@ -33,12 +33,10 @@ hello_base64 = get_audio_base64("hello.mp3")
 if "ki_antwort" not in st.session_state:
     st.session_state.ki_antwort = ""
 
-# HIER PERFEKT REPARIERT FÜR PYTHON 3.14 UND MEHRERE KEYS:
 def initialisiere_client():
     global aktueller_key_index
     if not API_KEYS:
         return None
-    # Holt den aktuellen Key sicher aus der Liste heraus
     key = API_KEYS[aktueller_key_index]
     if "HIER_DEIN" in key:
         return None
@@ -81,29 +79,14 @@ def frage_ki(text):
             return None
     return "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!"
 
-# Das unblockierbare native Streamlit-Formular (unsichtbar im Hintergrund)
-with st.form(key="unsichtbares_formular", clear_on_submit=True):
-    sprach_input = st.text_input("Schnittstelle", label_visibility="collapsed")
-    submit_button = st.form_submit_button("Senden")
+# Das sichtbare Streamlit-Textfeld dient jetzt als sicherer, unblockierbarer Empfänger!
+sprach_input = st.text_input("Sprachbefehl hier eingeben oder oben einsprechen:", key="hidden_voice_input")
 
-if submit_button and sprach_input:
-    st.session_state.ki_antwort = frage_ki(sprach_input)
-
-# CSS, um das hässliche Textfeld absolut unsichtbar im Hintergrund zu verstecken
-st.markdown("""
-    <style>
-    div[data-testid="stForm"] {
-        position: absolute !important;
-        top: -1000px !important;
-        left: -1000px !important;
-        opacity: 0 !important;
-        height: 0px !important;
-        width: 0px !important;
-        overflow: hidden !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
+if sprach_input:
+    # Verhindert doppelte Ausführung beim Neuladen
+    if "letzter_input" not in st.session_state or st.session_state.letzter_input != sprach_input:
+        st.session_state.letzter_input = sprach_input
+        st.session_state.ki_antwort = frage_ki(sprach_input)
 # Das komplette HTML- und JavaScript-System für den Browser (Teil 2 von 2)
 html_reine_web_app = """
 <div style="text-align: center; margin-bottom: 20px;">
@@ -111,13 +94,11 @@ html_reine_web_app = """
         🎙️ Befehl einsprechen
     </button>
     <p id="status" style="color: #555; font-family: sans-serif; margin-top: 15px; font-weight: bold; font-size: 15px;">Bereit fürs iPad. Klicke zum Sprechen.</p>
-    <div id="antwort-box" style="margin-top: 20px; padding: 15px; border-radius: 8px; font-family: sans-serif; font-weight: bold; display: none; font-size: 16px;"></div>
 </div>
 
 <script>
 const btn = document.getElementById('mic-btn');
 const status = document.getElementById('status');
-const antwortBox = document.getElementById('antwort-box');
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 if (!Recognition) {
@@ -171,26 +152,11 @@ if (!Recognition) {
         }
     }
 
-    function sprich(text) {
-        window.speechSynthesis.cancel(); 
-        const speech = new SpeechSynthesisUtterance(text);
-        speech.lang = 'de-DE';
-        window.speechSynthesis.speak(speech);
-    }
-
-    function zeigeAntwort(text, bgFarbe, textFarbe) {
-        antwortBox.innerText = text;
-        antwortBox.style.backgroundColor = bgFarbe;
-        antwortBox.style.color = textFarbe;
-        antwortBox.style.display = "block";
-    }
-
     btn.addEventListener('click', () => {
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
         try { rec.start(); } catch(e) {}
         status.innerText = "🔊 Ich höre dir zu! Sag mir einfach was du willst.";
         btn.style.backgroundColor = "#2baf2b"; 
-        antwortBox.style.display = "none";
     });
     
     rec.onresult = (e) => {
@@ -215,24 +181,8 @@ if (!Recognition) {
         } else if (gehoertLower.length > 0) {
             status.innerText = "🤖 Garmin überlegt...";
             
-            // Greift auf das versteckte Streamlit-Textfeld im Hauptfenster zu
-            const inputs = window.parent.document.getElementsByTagName('input');
-            if (inputs.length > 0) {
-                const targetInput = inputs[0];
-                targetInput.value = gehoert;
-                
-                // Events triggern, damit Streamlit den Wert registriert
-                targetInput.dispatchEvent(new Event('input', { bubbles: true }));
-                targetInput.dispatchEvent(new Event('change', { bubbles: true }));
-                
-                // Formular nativ absenden
-                setTimeout(() => {
-                    const form = targetInput.form;
-                    if (form) {
-                        form.requestSubmit();
-                    }
-                }, 50);
-            }
+            // ABSOLUT UNBLOCKIERBAR: Sendet die Daten legal per PostMessage ans Hauptfenster
+            window.parent.postMessage({ type: 'VOICE_INPUT', text: gehoert }, '*');
         }
     };
     
@@ -245,25 +195,56 @@ if (!Recognition) {
 # Musik-Platzhalter ersetzen
 html_bereit = html_reine_web_app.replace("PLATZHALTER_DUEL_MUSIC", duel_base64).replace("PLATZHALTER_CANTINA_MUSIC", cantina_base64).replace("PLATZHALTER_Hello_MUSIC", hello_base64)
 
-# Die Haupt-App wird gerendert (Ganz ohne key= Argument, um den Absturz in Python 3.14 zu verhindern!)
-st.components.v1.html(html_bereit, height=270)
+# Ein unblockierbarer Event-Listener im Hauptfenster fängt das Datenpaket ab und tippt es in das Streamlit-Feld ein
+js_postmessage_receiver = """
+<script>
+window.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'VOICE_INPUT') {
+        const gesprochenerText = event.data.text;
+        
+        // Findet das native Streamlit Textfeld im Hauptfenster
+        const inputs = window.parent.document.getElementsByTagName('input');
+        if (inputs.length > 0) {
+            const targetInput = inputs[0];
+            targetInput.value = gesprochenerText;
+            
+            // Triggert die Events, damit Streamlit die Änderung bemerkt
+            targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+            targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+            
+            // Sendet das Formular automatisch ab
+            setTimeout(() => {
+                const form = targetInput.form;
+                if (form) {
+                    form.requestSubmit();
+                } else {
+                    // Falls kein Formular da ist, simulieren wir Enter
+                    const ke = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, keyCode: 13, key: 'Enter' });
+                    targetInput.dispatchEvent(ke);
+                }
+            }, 50);
+        }
+    }
+});
+</script>
+"""
 
-# Wenn Python die KI-Antwort berechnet hat, geben wir sie über ein temporäres Skript an das Hauptfenster aus
+# Rendert die Haupt-App (Der Button)
+st.components.v1.html(html_bereit, height=130)
+
+# Rendert den unblockierbaren Empfänger im Hauptkontext
+st.components.v1.html(js_postmessage_receiver, height=0, width=0)
+
+# Wenn Python die KI-Antwort berechnet hat, geben wir sie flüssig aus und lesen sie laut vor
 if st.session_state.ki_antwort:
     st.success(st.session_state.ki_antwort)
     
-    js_ki_speech_template = """
+    js_ki_speech = f"""
     <script>
-    window.parent.document.getElementById('antwort-box').innerText = "TAUSCH_TEXT";
-    window.parent.document.getElementById('antwort-box').style.backgroundColor = "#d1ecf1";
-    window.parent.document.getElementById('antwort-box').style.color = "#0c5460";
-    window.parent.document.getElementById('antwort-box').style.display = "block";
-    
-    const speech = new SpeechSynthesisUtterance("TAUSCH_TEXT");
+    const speech = new SpeechSynthesisUtterance("{st.session_state.ki_antwort}");
     speech.lang = 'de-DE';
     window.speechSynthesis.speak(speech);
     </script>
     """
-    js_ki_speech_bereit = js_ki_speech_template.replace("TAUSCH_TEXT", st.session_state.ki_antwort)
-    st.components.v1.html(js_ki_speech_bereit, height=0, width=0)
+    st.components.v1.html(js_ki_speech, height=0, width=0)
     st.session_state.ki_antwort = ""
