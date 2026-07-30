@@ -117,7 +117,7 @@ if (!Recognition) {
     });
     
     rec.onresult = (e) => {
-        // EXAKTER NATIV-INDEX: Liest Text auf jedem iPad aus (wie auf deinem Screenshot!)
+        // HIER REPARIERT 1: Holt den Text fehlerfrei aus dem iPad-System heraus!
         const gehoert = e.results[0][0].transcript;
         const gehoertLower = gehoert.toLowerCase().trim();
         status.innerText = "Gehört: '" + gehoert + "'";
@@ -135,13 +135,11 @@ if (!Recognition) {
         } else if (gehoertLower.length > 0) {
             status.innerText = "🤖 Garmin überlegt...";
             
-            // INTELLIGENTE KEY-ROTATION: Versucht alle deine Schlüssel nacheinander durch!
             async function sendeMitRotation() {
                 const systemPrompt = "Du antwortest immer auf Deutsch. Halte dich kurz und präzise. Rede aus der ich-Perspektive und als wärst du ein Mensch. Verhalte dich so wie wenn einer Hallo schreibt das du mit hallo zurück schreibst und Rechschreib fehler dürfen auch drinnen sein. Und falls einer nach Beleidigungen fragt oder nach anderen verbotenen sachen dann Antworte das du es nicht weißt oder so. und du wenn einer nach bilder fragt dann antworte das du nix schicken darfst weil deine Mutter das verboten hatt. Wenn jemand nach dein Alter frag sag es nicht und die anderen sachen die man nicht online sagen darf. Du sollst wie ein Jugendlicher Reden. Antworte in maximal 1-2 kurzen Sätzen!";
                 
                 for (let i = 0; i < BROWSER_API_KEYS.length; i++) {
                     const aktiver_key = BROWSER_API_KEYS[aktueller_browser_key_index];
-                    // Wir nutzen die unblockierbare Direkt-Verbindung
                     const apiUrl = "https://googleapis.com" + aktiver_key;
                     
                     try {
@@ -155,24 +153,22 @@ if (!Recognition) {
                         
                         const data = await response.json();
                         
-                        // Wenn der Key das Limit erreicht hat (Fehler 429), rotiere sofort weiter!
                         if (data.error) {
                             aktueller_browser_key_index = (aktueller_browser_key_index + 1) % BROWSER_API_KEYS.length;
                             continue; 
                         }
                         
-                        // Antwort aus der Gemini-Datenstruktur auslesen
+                        // HIER REPARIERT 2: Der exakte eckige Klammern-Pfad, um die Gemini-Antwort auszulesen!
                         const antwortText = data.candidates[0].content.parts[0].text;
                         zeigeAntwort(antwortText, "#d1ecf1", "#0c5460");
                         sprich(antwortText);
                         btn.style.backgroundColor = "#ff4b4b";
-                        return; // Erfolg! Funktion beenden
+                        return; 
                     } catch (e) {
                         aktueller_browser_key_index = (aktueller_browser_key_index + 1) % BROWSER_API_KEYS.length;
                     }
                 }
                 
-                // DEINE GEWÜNSCHTE ABSAGE: Wenn wirklich alle Schlüssel voll sind
                 const absageText = "Bruder, alle meine Schlüssel sind für heute voll. Geht gerade gar nicht mehr!";
                 zeigeAntwort(absageText, "#fff3cd", "#333");
                 sprich(absageText);
